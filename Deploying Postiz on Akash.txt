@@ -1,0 +1,256 @@
+﻿A Comprehensive Guide to Building and Deploying a Custom Postiz Installation on the Akash Network
+Part 1: Deconstruction of the Postiz Application Stack
+Before a successful deployment architecture can be designed, it is imperative to deconstruct the target application, Postiz, into its fundamental components. This analysis establishes the technical "Bill of Materials" for the deployment, informing the subsequent containerization strategy, resource planning, and the final Akash Stack Definition Language (SDL) configuration.
+1.1. The Postiz Three-Service Architecture
+An analysis of the Postiz open-source project reveals that a production-ready installation is not a single application but a classic three-tier service architecture. While simple docker-compose.yml files abstract this complexity for ease of use , a robust deployment on any platform requires managing three distinct services, as confirmed by the project's official documentation and tech stack :
+1. The Application Server (postiz): This is the core service that runs the Postiz application logic. It serves the frontend, provides the API, and manages background tasks.
+2. The Database (postiz-postgres): This is the primary stateful backend. Postiz utilizes Prisma, which defaults to PostgreSQL for storing all persistent data, including user accounts, scheduled posts, social media credentials, and analytics data.
+3. The Cache & Queue (postiz-redis): This service serves a dual purpose. It functions as a high-speed cache for the application, but more critically, it acts as the message broker and persistence layer for the BullMQ job queue system. This makes Redis a mission-critical component; if the Redis data is lost, the queue of all pending and scheduled posts is lost with it.
+1.2. The Application Server: A Monolithic Monorepo Container
+The postiz application server presents the greatest architectural complexity. The gitroomhq/postiz-app repository is an NX Monorepo , a structure that houses multiple distinct applications (frontend, backend, workers) within a single codebase.
+The official Docker image, ghcr.io/gitroomhq/postiz-app:latest , is not a simple Node.js application. It is a composite or multi-process container. As illustrated in the official documentation's network diagrams , this single container intelligently bundles several processes, all managed internally:
+1. Internal Caddy Proxy: This web server acts as the single entry point for the container, listening on the external port 5000/tcp. It is responsible for routing internal traffic.
+2. Backend Service (NestJS): The core API, built with NestJS, runs as an internal process (e.g., on port 3000/tcp) and is proxied by the Caddy server.
+3. Frontend Service (Next.js): The React-based user interface runs as a separate internal process (e.g., on port 4200/tcp) and is also proxied by Caddy.
+4. Worker and Cron Processes: Additional Node.js processes run in the background to handle tasks from the BullMQ job queue, such as publishing scheduled posts and gathering analytics.
+This composite structure has a profound implication for the user's requirement of a "custom installation." It is not possible to simply pull the official Docker image. The user must rebuild this complex, multi-process container from their own modified source code. This is a significant engineering task that is not documented in a single, simple Dockerfile and is a common source of failure for self-hosters. Part 3 of this guide will present a robust strategy to address this specific challenge by leveraging the project's existing CI workflows rather than attempting to reinvent the build process.
+1.3. The Stateful Services: Database and Cache
+The Postiz stack contains two stateful services that require careful management:
+1. PostgreSQL: As the primary database, this is the most critical stateful component. The official docker-compose.yml confirms the use of a standard postgres image. This service will store all user-generated content and configuration. It must be backed by a persistent storage volume in any production deployment.
+2. Redis: As established, Redis is not merely an ephemeral cache in this architecture. Its role as the backend for the BullMQ job queue means it holds the state of all pending work. While its data is less critical than the primary PostgreSQL database (jobs could theoretically be rescheduled from the database), treating it as a stateful service by providing persistent storage is a best practice for resilience. Losing its data means all in-flight and scheduled posts will be lost.
+1.4. Network Architecture and Port Mapping
+A clear understanding of the network data flow is essential for constructing the Akash SDL. Based on the Postiz documentation , the complete network architecture is as follows:
+* External-to-Internal: The single point of public entry is 5000/tcp (or 443/tcp if a reverse proxy is used). All user browser traffic is directed to this port, which is handled by the internal Caddy proxy within the postiz container.
+* Internal (Intra-Container): Inside the postiz container, the Caddy proxy routes traffic to the appropriate service:
+   * Requests for the API (e.g., /api/*) are proxied to the NestJS backend on 3000/tcp.
+   * All other requests are proxied to the Next.js frontend on 4200/tcp.
+* Internal (Inter-Service): The postiz application container needs to communicate with its two stateful dependencies:
+   * The NestJS backend and workers connect to the PostgreSQL server at postiz-postgres:5432/tcp.
+   * The NestJS backend and workers connect to the Redis server at postiz-redis:6379/tcp.
+This internal network map forms the exact blueprint for our Akash SDL. On the Akash network, services within the same deployment can communicate directly using their defined service names as hostnames. Therefore, the DATABASE_URL and REDIS_URL environment variables configured in the postiz container must be set to point to the service names we will define in our SDL (e.g., db and cache), not to localhost or a static IP address.
+Part 2: Planning Production Resource Requirements
+This section translates the application stack's components (from Part 1) into concrete resource allocations (CPU, memory, and storage). These specifications are critical, as they will be used directly within the profiles.compute section of the Akash SDL. Under-provisioning resources is the most common reason for deployment failures, instability, and poor performance. The following recommendations are based on a synthesis of official documentation, community guides, and industry best practices for the underlying services.
+2.1. Analyzing Postiz Application Server Requirements
+The postiz application container, being a composite of at least three Node.js processes (frontend, backend, workers) plus a Caddy web server, is resource-intensive.
+* Baseline: The official Postiz documentation states that the Docker Compose setup has been tested on a Virtual Machine with 2 vCPUs and 2Gb RAM.
+* Recommendation: Community-provided setup guides recommend a more conservative baseline of 2 vCPUs and 4GB RAM.
+The 2GB figure should be considered an absolute minimum, suitable only for light testing. The 4GB recommendation provides a much safer production baseline, offering necessary headroom for the multiple Node.js processes, each with its own memory footprint.
+* Final Allocation (Service: postiz-app): 2 vCPUs, 4GB RAM.
+2.2. Analyzing PostgreSQL Database Requirements
+The database is the performance-critical core of the Postiz stack. It will handle constant reads and writes for analytics, post scheduling, and user data. Generic resource allocation here is a false economy.
+* Minimums: Industry documentation for minimum PostgreSQL server profiles cites 2 vCPUs and 8GB RAM.
+* Sufficient Performance: Other recommendations for a "sufficient" production environment (not minimum) suggest 4 vCPUs and 8GB RAM.
+* Recommended: For database-heavy workloads, "recommended" (versus "minimum") specifications quickly rise to 4 vCPUs and 16GB RAM.
+The performance of PostgreSQL is fundamentally bound by its shared_buffers configuration, which is a percentage of total system RAM. For a database-intensive application, the server must have enough RAM to hold the "hot" or "working set" of data in memory to avoid costly disk I/O. An 8GB RAM allocation represents a sensible minimum for a production system that expects to grow.
+* Final Allocation (Service: postiz-db): 4 vCPUs, 8GB RAM.
+2.3. Analyzing Redis Cache & Queue Requirements
+The Redis service, in its role as a BullMQ job queue, is more demanding than a simple key-value cache. It must manage the state of all pending jobs.
+* Non-Productive: System requirements for a non-productive Redis server (e.g., development/staging) are 2 CPUs and 4GB RAM.
+* Production: Production-grade requirements for a high-availability Redis cluster start at 3-4 vCPUs and 8GB RAM or 4 cores and 8GB RAM.
+For a single-tenant Postiz installation, the job queue is unlikely to be the primary system bottleneck. Therefore, starting with the "non-productive" specification of 2 vCPUs and 4GB RAM provides a reasonable and cost-effective balance.
+* Final Allocation (Service: postiz-cache): 2 vCPUs, 4GB RAM.
+2.4. Final Resource Allocation Plan
+This table synthesizes the findings from this section into a comprehensive "Bill of Materials" for the Akash provider. These values will be used to construct the profiles section of the deploy.yml file. The plan distinguishes between ephemeral storage (for the container's OS and application files) and persistent storage (for stateful data that must survive container restarts).
+Table 1: Recommended Resource Allocation for Akash Deployment
+Service
+	vCPU (Akash Units)
+	Memory (Gi)
+	Storage (Ephemeral)
+	Persistent Storage
+	Rationale
+	postiz-app
+	2.0
+	4
+	5Gi
+	None
+	Safe production baseline for the composite app container.
+	postiz-db
+	4.0
+	8
+	10Gi
+	50Gi
+	Minimum production spec for a database-heavy workload.
+	postiz[span_48](start_span)[span_48](end_span)[span_51](start_span)[span_51](end_span)-cache
+	2.0
+	4
+	5Gi
+	10Gi (Optional)
+	Minimum "non-productive" spec; sufficient for a job queue.
+	Total
+	8.0
+	16
+	20Gi
+	50-60Gi
+	
+
+	This table codifies the resource plan. The postiz-app row is derived from community guides as a safer alternative to the absolute minimum. The postiz-db row is based on "sufficient" production specifications to ensure database performance. The postiz-cache row uses the "non-productive" baseline as a balanced starting point. A 10Gi persistent volume for Redis is marked as optional; while recommended for resilience, it will be omitted from the final SDL in Part 5 for simplicity, but it remains a key consideration for a high-availability setup. This clear separation of ephemeral and persistent storage is a core concept for stateful deployments on Akash.
+Part 3: Building and Hosting Your Custom Postiz Docker Image
+The user's core requirement is to deploy a custom Postiz installation. This immediately invalidates the use of the pre-built ghcr.io/gitroomhq/postiz-app:latest image. A new, custom-built image must be created from the modified source code. This section details the recommended, professional-grade strategy for achieving this.
+3.1. The Fallacy of the Simple Dockerfile
+It is a common temptation to attempt to write a new, from-scratch Dockerfile for the custom application. However, as established in Part 1.2, the Postiz image is a complex, multi-process container.
+The project's build system is tightly integrated with the NX Monorepo structure. The package.json file contains highly specific build scripts, such as "build": "npx nx run-many --target=build --projects=frontend,backend,workers,cron". This build command orchestrates the parallel building of all separate "apps" within the monorepo.
+Attempting to manually replicate this intricate build orchestration in a custom Dockerfile is highly error-prone, brittle, and difficult to maintain. It would divorce the custom build process from the project's own battle-tested continuous integration (CI) workflows (visible as "Build Containers" in the repository's Actions tab ). This approach is a direct path to a "works on my machine" scenario and should be avoided.
+3.2. Recommended Strategy: Fork, Customize, and Build with GitHub Actions
+The most robust, repeatable, and maintainable strategy is to use the project's own build system to generate the custom image. This is achieved by forking the repository and leveraging its existing GitHub Actions workflows.
+1. Fork the Repository: Begin by creating a fork of the official gitroomhq/postiz-app repository into a personal or organizational GitHub account.
+2. Make Customizations: Clone the forked repository, create a new feature branch, and make all desired code modifications (e.g., theme changes, new features, plugin integration).
+3. Configure a Private Registry: The custom image must be hosted in a container registry. The two most common choices are:
+   * GitHub Container Registry (GHCR): This is the most seamless option, as the build process is already running on GitHub.
+   * Docker Hub: A public registry where a repository can be created to store the image.
+4. Configure GitHub Actions Secrets:
+   * In the forked GitHub repository, navigate to "Settings" > "Secrets and variables" > "Actions".
+   * New repository secrets must be added to allow the GitHub Actions workflow to authenticate and push to the private container registry. For GHCR, this typically involves creating a Personal Access Token (PAT) with write:packages scope and saving it as a secret (e.g., CR_PAT).
+5. Modify and Run the Build Workflow:
+   * Navigate to the "Actions" tab of the forked repository.
+   * Locate the primary build workflow file, such as "Build Containers" (likely located at .[span_64](start_span)[span_64](end_span)github/workflows/build-containers.yml ).
+   * Modify this workflow file. Find the "docker push" step. This step will be hardcoded to push to the gitroomhq organization. This must be changed to push to the new private registry (e.g., change ghcr.io/gitroomhq/postiz-app:latest to ghcr.io/YOUR_USERNAME/postiz-app:latest).
+   * Commit the change to the workflow file and push it. This push will trigger the modified action, which will execute the complete, complex monorepo build and publish the final, custom-built, multi-process image to the specified private registry.
+3.3. Your Custom Image: The Key to Deployment
+The output of this process is the single most important artifact for this custom deployment: a private Docker image URL (e.g., ghcr.io/YOUR_USERNAME/postiz-app:latest) and the credentials (e.g., username and PAT) required to pull it.
+This strategy completely bypasses the fragile and error-prone task of creating a new Dockerfile. Instead, it leverages the project's own CI/CD pipeline , ensuring the resulting image is built correctly, just as the official maintainers' images are. This artifact and its credentials are the key inputs for the Akash SDL in Part 5.
+Part 4: A Practitioner's Guide to the Akash Stack Definition Language (SDL)
+This section provides the "proper guide on sdl" requested by the user. The Stack Definition Language (SDL) is a declarative, human-readable YAML file (e.g., deploy.yml) that describes the application's requirements. It is the "form" that is submitted to the decentralized Akash marketplace to request compute, storage, and network resources. This guide will use the Postiz stack as a concrete example to explain the "why" behind each key component.
+4.1. The Four Core Sections of an SDL
+A complete and valid Akash SDL file is composed of four top-level keys :
+1. version: Specifies the manifest version. Currently, this must be "2.0".
+2. services: Defines what to run. This is a map of all the containers in the stack (in our case, app, db, and cache).
+3. profiles: Defines what resources are needed. This is the "menu" of CPU, memory, and storage configurations that providers can bid on.
+4. deployment: Defines how to deploy. This section maps the services to their corresponding profiles and specifies the number of instances (count) for each.
+4.2. services: Defining the "What"
+This block is the heart of the deployment, defining each container.
+* image: This string specifies the Docker image to pull.
+   * For our app service, this will be the custom image URL from Part 3 (e.g., ghcr.io/YOUR_USERNAME/postiz-app:latest).
+   * For db and cache, we will use official images (e.g., postgres:15-alpine and redis:7-alpine). It is a critical best practice to use a specific version tag (e.g., 15-alpine) instead of :latest, as Akash providers cache images heavily. Using :latest can result in unpredictable or stale image versions being deployed.
+* env: This array defines the environment variables to be injected into the container. This is how the Postiz app is configured. The most important use for this block is service discovery.
+   * As demonstrated in official Akash multi-tier deployment examples , a service named redis is automatically resolvable at the internal DNS hostname redis by any other service in the same deployment.
+   * This allows us to configure the app service's variables to point to the other services by name:
+      * DATABASE_URL=postgresql://user:pass@db:5432/postiz-db-local (points to our db service)
+      * REDIS_URL=redis://cache:6379 (points to our cache service)
+* expose: Internal vs. Global Networking
+   * This block controls all network access and is the most critical component for security.
+   * Global (to: - global: true): This directive opens the service to the public internet. The Akash provider will assign a public URL and route external traffic (typically port 80/443) to the port specified. We will use this only for our app service, exposing its internal port 5000 (the Caddy proxy) to the public.
+   * Internal: By omitting the global: true directive, the service remains internal. It is only reachable by other services within the same deployment group (e.g., app can talk to db, but the internet cannot). This is a fundamental security measure. Our db (PostgreSQL) and cache (Redis) services will not have a global exposure, shielding them from the public internet.
+* credentials: Using Your Custom Image
+   * Because the app image from Part 3 is hosted in a private registry, we must provide credentials for the Akash provider to pull it. The SDL has a native credentials block for this exact purpose.
+   * This block will be added to the app service and will specify the host (e.g., ghcr.io), username (e.g., your GitHub username), and password (e.g., your Personal Access Token).
+4.3. profiles: Defining the "How Much"
+This block defines the compute and storage profiles.
+* compute: We will create three compute profiles (e.g., app-profile, db-profile, cache-profile). Each of these profiles will directly implement the vCPU, memory, and ephemeral storage specifications from Table 1 in Part 2.4.
+* storage: The Key to Stateful Deployments
+   * This is the most important section for our db and (optionally) cache services. To deploy a stateful application, we must request persistent storage.
+   * Based on persistent storage examples , we will define a storage profile for our db service. The syntax requires specifying a name (e.g., data), a [span_59](start_span)[span_59](end_span)size (e.g., 50Gi), and, critically, the attributes: { persistent: true } block. This attribute tells the provider to provision a volume that will survive container restarts.
+   * The Two-Part Definition: Defining storage in the profiles block is only the first step. This merely allocates the volume. The service must then be told how to use this volume. This is accomplished via a params.storage block within the services.db definition. This params block mounts the named persistent volume (e.g., data) to the correct data path inside the container (e.g., /var/lib/postgresql/data ). This two-part (profiles and services) definition is a common point of confusion but is essential for stateful deployments.
+4.4. deployment: Defining the "How"
+This is the final "deployment plan". It is a mapping that connects the services, profiles, and placement groups.
+* It maps each service (from the services block) to a specific profile (from the profiles block) and specifies a count (number of replicas) for that mapping.
+* Our deployment block will have three entries, each with a count: 1:
+   1. The app service will be mapped to the app-profile.
+   2. The db service will be mapped to the db-profile.
+   3. The cache service will be mapped to the cache-profile.
+Part 5: The Complete Akash SDL for Postiz (deploy.yml)
+This section provides the culminating artifact: a novel and complete deploy.yml file designed specifically for the custom Postiz stack. This SDL synthesizes the architectural deconstruction from Part 1, the resource-planning "Bill of Materials" from Part 2, the custom image strategy from Part 3, and the SDL best practices from Part 4. It is a production-ready configuration file derived from official Akash examples for multi-tier applications , persistent storage , and private container images , all tailored to the Postiz application's specific needs.
+```yaml
+version: "2.0"
+SERVICES: What containers to run.
+services:
+1. The Custom Postiz Application Server
+app: # Use the custom image you built and pushed in Part 3 # Replace YOUR_USERNAME with your GitHub username or org image: ghcr.io/YOUR_USERNAME/postiz-app:latest
+# Provide credentials for your private registry # This is required for Akash to pull your custom image credentials: host: ghcr.io username: YOUR_GITHUB_USERNAME password: "YOUR_GH_PAT_OR_TOKEN" # Must be a string
+# Make the app depend on the db and cache # This ensures the database and cache start first depends_on: - "db" - "cache"
+# Pass all required environment variables to Postiz # See: https://docs.postiz.com/installation/docker-compose env: # --- Core URLs (MUST be set to your Akash URL) --- # CRITICAL: You must deploy twice. # 1. Deploy with placeholder URLs. # 2. Get the assigned URL from the Akash lease. # 3. Update this file with the correct URL and run 'akash tx deployment update'. - "MAIN_URL=https://<your-akash-app-url>" - "FRONTEND_URL=https://<your-akash-app-url>" - "NEXT_PUBLIC_BACKEND_URL=https://<your-akash-app-url>/api"
+# --- Security --- - "JWT_SECRET=REPLACE_WITH_A_VERY_LONG_RANDOM_STRING"
+# --- Internal Service Discovery --- # This is the critical connection to our other services. # We use the service names 'db' and 'cache' as the hostnames. - "DATABASE_URL=postgresql://postiz-user:YOUR_SECRET_DB_PASSWORD@db:5432/postiz-db-local" - "REDIS_URL=redis://cache:6379"
+# --- Other Postiz Settings --- - "BACKEND_INTERNAL_URL=http://localhost:3000" - "IS_GENERAL=true" - "STORAGE_PROVIDER=local" - "UPLOAD_DIRECTORY=/uploads" - "NEXT_PUBLIC_UPLOAD_DIRECTORY=/uploads" # - "NOT_SECURED=true" # Uncomment if you have issues with HTTPS/login
+# Expose the app's Caddy proxy (port 5000) to the world expose: - port: 5000 as: 80 # Akash routes external port 80 to our internal port 5000 to: - global: true
+2. The PostgreSQL Database Server
+db: image: postgres:15-alpine env: - "POSTGRES_USER=postiz-user" - "POSTGRES_DB=postiz-db-local" # This password MUST match the one in the app's DATABASE_URL - "POSTGRES_PASSWORD=YOUR_SECRET_DB_PASSWORD"
+# Mount the persistent volume 'data' (defined in profiles) # to the container's standard data directory. params: storage: data: mount: /var/lib/postgresql/data
+# NO 'expose' block here. This service is internal-only # and is not accessible from the public internet.
+3. The Redis Cache & Queue Server
+cache: image: redis:7-alpine
+# NO 'expose' block here. This service is internal-only # and is not accessible from the public internet.
+PROFILES: What resources are needed.
+profiles: compute: # 1. Profile for the Postiz App # As defined in Table 1 (Part 2.4) app: resources: cpu: units: 2.0 memory: size: 4Gi storage: - size: 5Gi # Ephemeral
+# 2. Profile for the Database # As defined in Table 1 (Part 2.4) db: resources: cpu: units: 4.0 memory: size: 8Gi storage: # Ephemeral storage for the OS - size: 10Gi # This 'data' volume is our persistent storage - name: data size: 50Gi attributes: persistent: true
+# 3. Profile for the Redis Cache # As defined in Table 1 (Part 2.4) cache: resources: cpu: units: 2.0 memory: size: 4Gi storage: - size: 5Gi # Ephemeral
+Define the placement (region)
+placement: dcloud: pricing: app: denom: uakt amount: 10000 db: denom: uakt amount: 10000 cache: denom: uakt amount: 10000
+DEPLOYMENT: How to map services to profiles.
+deployment:
+1. Deploy one 'app' service using the 'app' profile
+app: dcloud: profile: app count: 1
+2. Deploy one 'db' service using the 'db' profile
+db: dcloud: profile: db count: 1
+3. Deploy one 'cache' service using the 'cache' profile
+cache: dcloud: profile: cache count: 1
+## Part 6: Deployment, Operational Management, and Critical Risks
+
+This final section details the operational workflow for deploying the `deploy.yml` and, more importantly, addresses the non-obvious but critical risks associated with running a stateful, production application on decentralized cloud infrastructure.
+
+### 6.1. Deployment Workflow (Akash CLI)
+
+The following steps assume a working Akash CLI installation [span_97](start_span)[span_97](end_span)[span_98](start_span)[span_98](end_span) and a funded wallet.[span_99](start_span)[span_99](end_span)[span_100](start_span)[span_100](end_span)
+
+1.  **Create `deploy.yml`:** Save the complete SDL from Part 5 into a file named `deploy.yml`. Meticulously replace all placeholders (`YOUR_USERNAME`, `YOUR_GH_PAT_OR_TOKEN`, `YOUR_SECRET_DB_PASSWORD`, `REPLACE_WITH_A_VERY_LONG_RANDOM_STRING`).
+2.  **First Deployment:** Create the initial deployment. Note that the `MAIN_URL` variables are still placeholders at this stage.
+   ```bash
+   akash tx deployment create deploy.yml --from <your_key_name> --chain-id akashnet-2 --node <rpc_node> -y
+   ```
+   (This will output a `dseq` number. Note it down.)
+3.  **Inspect Bids:** Wait 1-2 minutes for providers to bid on the deployment.
+   ```bash
+   akash query market bid list --owner <your_akash_address> --dseq <dseq_number> --state open
+   ```
+4.  **Create Lease:** Choose a provider from the list (based on price, reputation, etc.) and create the lease.
+   ```bash
+   akash tx market lease create --dseq <dseq_number> --provider <provider_address> --from <your_key_name> --chain-id akashnet-2 --node <rpc_node> -y
+   ```
+5.  **Verify Logs:** Monitor the provider logs to ensure the custom image is pulled and all services start.
+   ```bash
+   akash provider lease-logs --dseq <dseq_number> --provider <provider_address> --service app
+   akash provider lease-logs --dseq <dseq_number> --provider <provider_address> --service db
+   ```
+6.  **Get Public URL:** Once the lease is active, retrieve the public URL assigned to the `app` service.
+   ```bash
+   akash provider lease-status --dseq <dseq_number> --provider <provider_address>
+   ```
+   (Look in the JSON output for the `services.app.uris` section.)
+7.  **Second Deployment (Update):** This is the critical, non-obvious step.
+   *   Open `deploy.yml` again.
+   *   Replace the placeholder `<your-akash-app-url>` with the *actual URL* obtained in the previous step (e.g., `https://something.provider.akash.network`).
+   *   Save the file.
+   *   Run the `update` command. This will redeploy the `app` container with the correct, final environment variables.
+   ```bash
+   akash tx deployment update deploy.yml --dseq <dseq_number> --from <your_key_name> --chain-id akashnet-2 --node <rpc_node> -y
+   ```
+8.  **Final Access:** After a few moments, the `app` container will restart. The Postiz installation is now live, fully configured, and accessible at its public URL.
+
+### 6.2. The Persistent Storage "Gotcha": A Critical Warning
+
+The single greatest operational risk in this entire guide is a fundamental misunderstanding of how "persistent storage" functions on the Akash Network.
+
+*   **The Limitation:** Akash persistent storage is **tied to the lease, not to the deployment or the user account**.[span_101](start_span)[span_101](end_span)
+*   **The Consequence:** This has two catastrophic implications for a stateful database:
+   1.  If a lease is allowed to expire and is closed, the provider **permanently deletes** the associated persistent storage volume. All PostgreSQL data will be **irreversibly lost**.
+   2.  If the deployment is migrated to a new provider (e.g., to find a better price or for geographic reasons), the storage volume **does not migrate with it**. The original lease is closed, and the data is **permanently deleted**.[span_102](start_span)[span_102](end_span)
+
+For a stateful application like Postiz, where the database is the system of record, this behavior makes the default persistent storage feature unsuitable as a sole "backup" or "disaster recovery" solution. It provides persistence against *container crashes* but not against *lease-level events*.
+
+### 6.3. Final Recommendation: Mandatory External Backups
+
+To mitigate the critical data-loss risk identified in 6.2, it is **mandatory** to implement an independent, external backup strategy for the PostgreSQL database.
+
+**Recommended Strategy:**
+
+1.  **Add a "Backup" Service:** A fourth service should be added to the `deploy.yml` (or run as a separate Akash deployment).
+2.  **Use a Cron Container:** This service can use a simple image like `postgres:15-alpine` and be configured to run a cron job.
+3.  **Perform `pg_dump`:** The container's command should be a shell script that, on a schedule (e.g., nightly), performs a `pg_dump` of the `db` service. It can connect using the internal hostname:
+   ```bash
+   pg_dump -h db -U postiz-user -d postiz-db-local | gzip > backup.sql.gz
+   ```
+4.  **Offload to External Storage:** The script must then encrypt this dump and upload it to an S3-compatible, decentralized storage provider that is *not* part of the Akash deployment. Options include Filebase, Storj, or Skynet.[span_103](start_span)[span_103](end_span)
+
+This strategy decouples the data's survival from the Akash lease. This is the only way to ensure the custom Postiz installation is truly resilient and protected from the inherent operational risks and limitations of lease-based decentralized infrastructure.
+
+Works cited
+1. Quickstart - Postiz Docs, https://docs.postiz.com/quickstart 2. Docker Compose - Postiz Docs, https://docs.postiz.com/installation/docker-compose 3. Postiz Setup Guide: Open-Source Social Media Scheduler - The BabaBuilds.com Blog, https://bababuilds.com/blog/postiz-setup-guide/ 4. gitroomhq/postiz-app: The ultimate social media scheduling tool, with a bunch of AI, https://github.com/gitroomhq/postiz-app 5. Postiz - open-source social media scheduling tool : r/selfhosted - Reddit, https://www.reddit.com/r/selfhosted/comments/1f4x806/postiz_opensource_social_media_scheduling_tool/ 6. How I built my open-source Social media scheduling tool... - DEV Community, https://dev.to/nevodavid/how-i-built-my-open-source-social-media-scheduling-tool-dih 7. Gitroom - GitHub, https://github.com/gitroomhq 8. Docker - Postiz Docs, https://docs.postiz.com/installation/docker 9. Development Environment - Postiz Docs, https://docs.postiz.com/installation/development 10. Someone please optimize the postiz docker image : r/selfhosted - Reddit, https://www.reddit.com/r/selfhosted/comments/1lql0p0/someone_please_optimize_the_postiz_docker_image/ 11. To ensure that the Data Exporter solution performs as expected, the PostgreSQL database must be installed on a computer that meets the recommended specifications. - Genetec TechDoc Hub, https://techdocs.genetec.com/r/en-US/GenetecTM-Data-Exporter-Plugin-Guide-1.0.0/PostgreSQL-system-requirements 12. Hardware requirements for a PostgreSQL server that is only used for Qlik - Qlik Community, https://community.qlik.com/t5/Management-Governance/Hardware-requirements-for-a-PostgreSQL-server-that-is-only-used/td-p/1744047 13. Documentation: 18: 19.4. Resource Consumption - PostgreSQL, https://www.postgresql.org/docs/current/runtime-config-resource.html 14. How to estimate how many CPUs and RAM is necessary for a postgresql DB? - Reddit, https://www.reddit.com/r/PostgreSQL/comments/smxc66/how_to_estimate_how_many_cpus_and_ram_is/ 15. System requirements for using Redis - OutSystems How to Guide, https://success.outsystems.com/documentation/how_to_guides/infrastructure/configuring_outsystems_with_redis_in_memory_session_storage/system_requirements_for_using_redis/ 16. Requirements summary | Docs - Redis, https://redis.io/docs/latest/integrate/redis-data-integration/installation/reqsummary/ 17. Deploying a Service with Persistent Storage on Akash Network - Medium, https://medium.com/@dika/deploying-a-service-with-persistent-storage-on-akash-network-1727ef270e48 18. gitroomhq/postiz-app - Workflow runs - GitHub, https://github.com/gitroomhq/postiz-app/actions 19. Build and push your first image - Docker Docs, https://docs.docker.com/get-started/introduction/build-and-push-first-image/ 20. My Advice for Getting Started using Akash | by figurestudios - Medium, https://medium.com/@figuregang/my-advice-for-getting-started-using-akash-e4a0835103ee 21. Using GitHub Actions, build and push Docker images | by Theara Seng - Medium, https://medium.com/@thearaseng/using-github-actions-build-and-push-docker-images-30d05e58be4b 22. Continuous Integration and Deployment of Docker Images using GitHub Actions - Reddit, https://www.reddit.com/r/docker/comments/o0pavu/continuous_integration_and_deployment_of_docker/ 23. Stack Definition Language (SDL) | Akash Network - Your Guide to Decentralized Cloud, https://akash.network/docs/getting-started/stack-definition-language/ 24. Akash Network Documentation - Your Guide to Decentralized Cloud, https://akash.network/docs/ 25. Deployment Overview | Akash Network - Your Guide to Decentralized Cloud, https://akash.network/docs/deployments/overview/ 26. Multi-Tiered Deployment | Akash Network - Your Guide to Decentralized Cloud, https://akash.network/docs/guides/deployments/multi-tiered-deployments/ 27. Akash CLI Installation | Akash Network - Your Guide to Decentralized Cloud, https://akash.network/docs/deployments/akash-cli/installation/ 28. Deploying images from a private container registry - Knative, https://knative.dev/docs/serving/deploying-from-private-registry/ 29. Introducing: Developer Specific Workflows in Akash Console, https://akash.network/blog/introducing-developer-specific-workflows-in-akash-console/ 30. Persistent Storage | Akash Network - Your Guide to Decentralized Cloud, https://akash.network/docs/network-features/persistent-storage/ 31. What is Akash Network (AKT) - A Comprehensive Overview - Imperator.co, https://www.imperator.co/resources/blog/what-is-akash-network-blockchain-presentation 32. How to persist data in a dockerized postgres database using volumes - Stack Overflow, https://stackoverflow.com/questions/41637505/how-to-persist-data-in-a-dockerized-postgres-database-using-volumes

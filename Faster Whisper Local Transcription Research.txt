@@ -1,0 +1,480 @@
+﻿Advanced Architectures for Local Audio Transcription and Temporal Alignment: A Comprehensive Technical Report
+
+
+
+
+1. Introduction: The Paradigm Shift in Automatic Speech Recognition
+
+
+The landscape of Automatic Speech Recognition (ASR) has undergone a seismic shift following the release of weakly supervised learning models, most notably OpenAI's Whisper. Historically, ASR systems were fragmented, relying on complex pipelines of acoustic models, pronunciation dictionaries, and language models, often trained on distinct, limited datasets. The introduction of Whisper demonstrated that massive-scale training on diverse, noisy, and weakly labeled data could produce a model robust enough to handle accents, background noise, and technical jargon with near-human accuracy.1
+However, the transition from a research artifact to a production-grade tool presents significant engineering challenges. While the original PyTorch implementation of Whisper offers reference-quality accuracy, it suffers from computational inefficiencies that hinder deployment in resource-constrained or real-time environments. This report focuses on faster-whisper, a highly optimized reimplementation utilizing the CTranslate2 engine, which addresses these latency and memory constraints.3
+The primary objective of this analysis is to dissect the methodologies for extracting precise temporal metadata—specifically timestamps—from audio streams using faster-whisper in a local environment. The necessity for local inference is driven by critical requirements in data privacy, cost control, and system autonomy, particularly in legal, medical, and enterprise sectors where cloud-based APIs pose unacceptable risks.5 Furthermore, we will explore the integration of these transcription capabilities with advanced speaker diarization frameworks like pyannote.audio to create rich, speaker-attributed transcripts, and the use of forced alignment techniques exemplified by WhisperX to rectify the temporal drift inherent in sequence-to-sequence models.7
+This document serves as an exhaustive guide for machine learning engineers and software architects, detailing the theoretical underpinnings, implementation strategies, and optimization techniques required to build state-of-the-art, local ASR pipelines.
+________________
+
+
+2. Theoretical Foundations of Transformer-Based ASR
+
+
+
+
+2.1 The Encoder-Decoder Architecture
+
+
+To understand how faster-whisper derives timestamps, one must first grasp the architecture of the underlying Whisper model. Unlike Connectionist Temporal Classification (CTC) models such as Wav2Vec2, which predict a probability distribution over the vocabulary for each time step of the input, Whisper utilizes a Transformer-based Encoder-Decoder architecture.1
+The Encoder processes the input audio, which is first converted into a log-Mel spectrogram. This spectrogram is treated as a sequence of vector inputs. The encoder applies a series of convolutional layers followed by sinusoidal positional encodings and a stack of Transformer blocks. The output is a high-dimensional representation of the audio features, encoding distinct acoustic events and their temporal relationships.9
+The Decoder operates as an autoregressive language model. It receives the encoded audio features via cross-attention mechanisms and predicts the output text sequence token by token. Crucially, the decoder is conditioned not just on the audio, but also on the previously generated tokens. This autoregressive nature allows Whisper to implicitly learn a strong language model, enabling it to correct phonetic ambiguities based on context (e.g., distinguishing "their" from "there" based on syntax).1
+
+
+2.2 The Challenge of Temporal alignment in Seq2Seq
+
+
+The fundamental challenge in extracting timestamps from a Seq2Seq model like Whisper lies in the decoupling of input and output sequences. In a CTC model, there is a direct monotonic alignment between the input frames and output characters. In Whisper's Encoder-Decoder, the decoder might generate the token for the first word after processing the entire audio context, or it might hallucinate a phrase that was never spoken.
+Whisper addresses this by treating time as a token. The model's vocabulary includes special timestamp tokens that represent specific points in time within the 30-second processing window. During training, the model learns to predict these timestamp tokens at the beginning and end of continuous speech segments.1 However, these "native" timestamps operate at the utterance level (segment level), typically spanning several seconds. Achieving word-level precision requires deeper introspection into the model's internal attention weights, a capability that faster-whisper exposes and refines.3
+
+
+2.3 Quantization and Inference Efficiency
+
+
+The shift to faster-whisper is motivated by the need for efficiency. The standard implementation uses 32-bit floating-point (FP32) precision for model weights. faster-whisper, built on CTranslate2, leverages quantization—the process of mapping continuous infinite values to a smaller set of discrete finite values.
+By converting model weights to 8-bit integers (INT8), faster-whisper achieves a massive reduction in memory footprint (VRAM). A large-v3 model that typically requires ~10GB of VRAM in FP16 can run in under 4GB in INT8, with negligible degradation in Word Error Rate (WER).3 This quantization is critical for local deployment, allowing powerful models to run on consumer-grade GPUs (like the NVIDIA RTX 3060) or even purely on CPUs.3 Benchmarks indicate that this approach yields inference speeds up to 4 times faster than the vanilla PyTorch implementation.3
+________________
+
+
+3. Operationalizing Faster-Whisper for Timestamp Extraction
+
+
+
+
+3.1 Environment Configuration and Dependencies
+
+
+Deploying faster-whisper effectively requires a rigorously configured environment. The library depends heavily on CTranslate2 for inference and av or ffmpeg for audio processing.
+Dependency Management:
+The interaction between PyTorch, CUDA drivers, and CTranslate2 can be brittle. Specific attention must be paid to the CUDA version. While modern GPUs support CUDA 12.x, some older binary wheels for ctranslate2 or torch may default to CUDA 11.x, leading to "symbol lookup errors" or failure to detect the GPU. It is recommended to explicitly install the CUDA toolkit compatible with the target libraries.8
+For a robust setup, we prioritize a virtual environment:
+
+
+Bash
+
+
+
+
+python -m venv venv
+source venv/bin/activate
+pip install faster-whisper
+# Verify CUDA availability
+python -c "import torch; print(torch.cuda.is_available())"
+
+
+
+3.2 The Transcription Pipeline
+
+
+The core workflow involves instantiating the WhisperModel class. This class handles the loading of weights (downloading them from Hugging Face if necessary) and the initialization of the inference engine.
+Model Selection:
+The choice of model size (tiny, base, small, medium, large-v3) dictates the trade-off between latency and accuracy. For production-grade transcription where timestamps are critical, large-v3 or distil-large-v3 is strongly recommended. The "distilled" models offer a significant speedup (up to 6x) with a very minor drop in accuracy by reducing the number of decoder layers.2
+Code Structure for Timestamp Retrieval:
+To retrieve timestamps, the transcribe method is the entry point. Unlike the original library which returns a massive JSON object at the end, faster-whisper returns a generator of segments. This is a crucial architectural decision for memory management, allowing the processing of hours-long audio files without buffering the entire transcript in RAM.3
+
+
+Python
+
+
+
+
+from faster_whisper import WhisperModel
+
+model_size = "large-v3"
+# Compute type 'float16' is standard for GPUs. 'int8_float16' is even more efficient.
+model = WhisperModel(model_size, device="cuda", compute_type="float16")
+
+segments, info = model.transcribe(
+   "audio.mp3", 
+   beam_size=5, 
+   word_timestamps=True,
+   vad_filter=True
+)
+
+print(f"Detected language '{info.language}' with probability {info.language_probability}")
+
+for segment in segments:
+   for word in segment.words:
+       print(f"[{word.start:.2f}s -> {word.end:.2f}s] {word.word}")
+
+
+
+3.3 Deep Dive: Word-Level Timestamp Mechanism
+
+
+The parameter word_timestamps=True triggers a complex post-processing step. In the standard decoding loop, the model outputs tokens and segment-level timestamps. When word timestamps are requested, the library taps into the Cross-Attention Weights of the model's decoder layers.11
+The Mechanism:
+1. Attention Extraction: For every generated token, the model inspects the attention weights, which represent the "focus" of the decoder on specific frames of the encoded audio spectrogram.
+2. Alignment: The system aligns the token to the audio frames that received the highest attention scores.
+3. Aggregation: Since a single word might be split into multiple sub-word tokens (e.g., "transcription" -> "tran", "scrip", "tion"), the logic aggregates the time durations of constituent tokens to form the final word-level boundary.
+Limitations:
+While innovative, this attention-based alignment is not infallible. Attention weights can be "noisy" or diffuse, especially in the presence of background noise or rapid speech. The model might "attend" to a future or past frame due to context, causing slight temporal smears. This is why faster-whisper sometimes exhibits "jitter" in its timestamps compared to forced-alignment methods discussed in Section 5.11
+
+
+3.4 Voice Activity Detection (VAD) Filtering
+
+
+A recurring issue with the original Whisper model is its tendency to hallucinate during long periods of silence. The decoder, driven to predict something, may regurgitate previous text or invent plausible-sounding phrases.
+faster-whisper integrates Silero VAD, a highly efficient pre-trained model for speech detection. By setting vad_filter=True, the pipeline:
+1. Scans the audio to generate a speech probability map.
+2. Suppresses or skips segments where the probability of speech falls below a threshold (defaulting to conservative values to avoid cutting off whispers).3
+3. Impact on Timestamps: This is vital for timestamp accuracy. Without VAD, a timestamp for a sentence might artificially extend to cover 10 seconds of subsequent silence. With VAD, the timestamp is tightly clipped to the actual speech activity.
+The vad_parameters dictionary allows fine-tuning:
+* min_silence_duration_ms: How long a pause must be to be considered a break (default 2000ms). Reducing this to 500ms can help in distinguishing rapid turn-taking in conversations.3
+________________
+
+
+4. Serialization Strategies: From Objects to Standards
+
+
+The raw output from faster-whisper is a sequence of Python objects. To be useful in video players (VLC, YouTube) or web interfaces, this data must be serialized into standardized subtitle formats.
+
+
+4.1 The SubRip (SRT) Standard
+
+
+SRT is the most ubiquitous subtitle format. It relies on a simple four-part structure: an index, a time range, the text, and a blank line. The time format is strict: HH:MM:SS,mmm.
+Implementation Detail:
+A critical detail often missed is the comma separator for milliseconds. Python's datetime or standard formatting often defaults to a dot, which renders the SRT invalid in some strict parsers.
+Table 1: SRT vs. VTT Formatting Differences
+Feature
+	SubRip (.srt)
+	WebVTT (.vtt)
+	Header
+	None
+	WEBVTT
+	Time Separator
+	Comma (,)
+	Dot (.)
+	Milliseconds
+	3 digits
+	3 digits
+	Styling
+	Basic HTML-like tags (<b>)
+	CSS-based (::cue)
+	Positioning
+	Non-standard
+	Supported (e.g., line:90%)
+	
+
+4.2 Custom Serialization Logic
+
+
+While libraries exist, writing a custom serializer offers the highest performance and control, especially when dealing with the streaming generator output of faster-whisper.
+
+
+Python
+
+
+
+
+import math
+
+def seconds_to_srt_time(seconds):
+   hours = int(seconds // 3600)
+   minutes = int((seconds % 3600) // 60)
+   secs = int(seconds % 60)
+   millis = int((seconds - int(seconds)) * 1000)
+   return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
+
+def generate_srt(segments, output_file):
+   with open(output_file, "w", encoding="utf-8") as f:
+       for i, segment in enumerate(segments, start=1):
+           start = seconds_to_srt_time(segment.start)
+           end = seconds_to_srt_time(segment.end)
+           text = segment.text.strip()
+           f.write(f"{i}\n{start} --> {end}\n{text}\n\n")
+
+.12
+
+
+4.3 Advanced formatting with pysubs2
+
+
+For complex requirements, such as converting between formats or adjusting timing synchronization (e.g., adding a global offset because the audio started late), the pysubs2 library provides a robust abstraction layer. It can ingest the segment dictionaries and export to ASS (Advanced Substation Alpha), which supports karaoke effects and precise screen positioning—useful for visualizing word-level timestamps.12
+________________
+
+
+5. Advanced Temporal Refinement: The WhisperX Framework
+
+
+While faster-whisper's attention-based timestamps are serviceable, they are not "frame-perfect." For applications requiring lip-sync accuracy or precise audio editing, Forced Alignment is the industry standard. WhisperX is a meta-framework that combines faster-whisper with phoneme-based alignment models to correct timestamp drift.3
+
+
+5.1 The Drift Problem in Long-Form Audio
+
+
+Whisper processes audio in 30-second chunks. In long recordings, minor errors in the prediction of the timestamp tokens can accumulate. A 30-second chunk might be transcribed accurately in text, but the timestamps might shift by 0.5–1.0 seconds. This "drift" makes the timestamps unusable for cutting video or precise captioning.8
+
+
+5.2 The Mechanism of Forced Alignment
+
+
+WhisperX solves this by decoupling transcription from timing.
+1. Transcription Phase: It uses faster-whisper to generate the text transcript. It essentially ignores the fine-grained timestamps from this phase, trusting only the text.8
+2. Alignment Phase: It loads a separate acoustic model, typically a Wav2Vec2 model fine-tuned for phoneme recognition (e.g., wav2vec2-large-960h for English).
+3. Phoneme Matching: The text transcript is converted into a sequence of expected phonemes. The Wav2Vec2 model generates a probability matrix (trellis) of phonemes for the audio.
+4. Dynamic Time Warping (DTW): An algorithm finds the optimal path through this probability matrix that matches the expected phoneme sequence. This effectively "locks" each word to the exact milliseconds where its constituent sounds occur in the waveform.8
+
+
+5.3 Architecture of WhisperX
+
+
+WhisperX introduces a specialized batching pipeline that further enhances faster-whisper.
+* VAD Pre-segmentation: Instead of feeding the raw audio to Whisper, WhisperX uses VAD to cut the audio into active speech segments.
+* Parallel Batching: These segments are batched and fed to faster-whisper. Since the segments are independent, the context window is reset, preventing hallucination loops where the model repeats the same phrase endlessly.8
+Table 2: Comparative Analysis of Whisper Variants
+Feature
+	OpenAI Whisper
+	Faster-Whisper
+	WhisperX
+	Insanely-Fast-Whisper
+	Backend
+	PyTorch
+	CTranslate2
+	CTranslate2 + Wav2Vec2
+	Transformers + Optimum
+	Speed
+	Baseline (1x)
+	High (4x)
+	High (4x) + Alignment overhead
+	Extreme (8x+)
+	Memory (VRAM)
+	High
+	Low (Int8)
+	Medium (Requires 2 models)
+	Medium/High
+	Timestamp Accuracy
+	Medium (Utterance)
+	Good (Attention)
+	Excellent (Forced Alignment)
+	Good (Attention)
+	Diarization
+	None
+	None
+	Native Integration
+	Optional Integration
+	Long-form Stability
+	Prone to drift
+	Better
+	Best (VAD-based batching)
+	Good
+	7
+
+
+5.4 Implementation of Alignment
+
+
+The Python implementation of WhisperX abstracts the alignment complexity.
+
+
+Python
+
+
+
+
+import whisperx
+
+device = "cuda"
+audio_file = "interview.wav"
+batch_size = 16
+
+# 1. Transcribe with faster-whisper backend
+model = whisperx.load_model("large-v2", device, compute_type="float16")
+audio = whisperx.load_audio(audio_file)
+result = model.transcribe(audio, batch_size=batch_size)
+
+# 2. Load Alignment Model
+model_a, metadata = whisperx.load_align_model(language_code=result["language"], device=device)
+
+# 3. Perform Alignment
+aligned_result = whisperx.align(
+   result["segments"], 
+   model_a, 
+   metadata, 
+   audio, 
+   device, 
+   return_char_alignments=False
+)
+
+# aligned_result["word_segments"] now contains high-precision timestamps
+
+8
+________________
+
+
+6. Speaker Diarization: The Missing Link
+
+
+Transcription answers "what" was said. Diarization answers "who" said it. Neither faster-whisper nor the original Whisper model has native capabilities to distinguish speakers. To create a transcript that resembles a script (e.g., "Speaker A: Hello"), we must integrate a specialized diarization system.
+
+
+6.1 The Pyannote.audio Framework
+
+
+The dominant open-source solution for diarization is pyannote.audio. It is a modular pipeline built on PyTorch that performs three key tasks:
+1. Voice Activity Detection (VAD): Removing silence.
+2. Speaker Embedding: Using a neural network (like TitaNet or ECAPA-TDNN) to convert short audio slices into fixed-dimension vectors (embeddings) that represent the unique characteristics of a voice.15
+3. Clustering: Grouping these embeddings. Algorithms like Agglomerative Hierarchical Clustering or Spectral Clustering are used to determine the optimal number of speakers and group the segments accordingly.16
+
+
+6.2 The "Speaker-Blind" Problem
+
+
+The fundamental engineering challenge is that Whisper and Pyannote operate asynchronously.
+* Whisper outputs: Text Segment (00:00 - 00:05)
+* Pyannote outputs: Speaker Segment (00:00 - 00:02, Speaker_01), Speaker Segment (00:03 - 00:05, Speaker_02)
+Whisper might transcribe a sentence that spans across a change of speakers. For example, if Speaker A says "Hello" and Speaker B immediately says "Hi", Whisper might output a single segment "Hello Hi" spanning the whole duration. Pyannote, however, will see two distinct speaker turns.
+
+
+6.3 Algorithmic Integration Strategies
+
+
+To merge these streams, we employ timestamp-based mapping algorithms.
+Strategy A: The Centroid Method
+For each word segment generated by faster-whisper (using word_timestamps=True), we calculate the midpoint (centroid) of the word's time interval. We then query the Pyannote timeline to see which speaker was active at that exact moment.
+* Pros: Simple to implement.
+* Cons: Fails if the speaker changes mid-word (rare) or if alignment is slightly off.
+Strategy B: Intersection Over Union (IoU)
+We calculate the temporal overlap between the word interval and all active speaker segments. The speaker with the highest overlap duration is assigned to the word. This is the method employed by WhisperX.17
+
+
+6.4 Implementing Diarization with Pyannote
+
+
+Using the pyannote/speaker-diarization-3.1 pipeline requires a Hugging Face authentication token, as the model is gated.
+
+
+Python
+
+
+
+
+from pyannote.audio import Pipeline
+
+pipeline = Pipeline.from_pretrained(
+   "pyannote/speaker-diarization-3.1", 
+   use_auth_token="YOUR_HF_TOKEN"
+)
+pipeline.to(torch.device("cuda"))
+
+# Run Diarization
+diarization = pipeline("audio.wav")
+
+# Iterating results
+for turn, _, speaker in diarization.itertracks(yield_label=True):
+   print(f"start={turn.start:.1f}s stop={turn.end:.1f}s speaker_{speaker}")
+
+.18
+Resource Management Warning:
+Both faster-whisper (Large-v3) and pyannote (Segmentation + Embedding models) are VRAM-intensive. Running them simultaneously on a standard 8GB GPU will likely trigger an Out-Of-Memory (OOM) error.
+Best Practice: Run them sequentially.
+1. Load Whisper -> Transcribe -> Delete Whisper Model -> Garbage Collect (gc.collect(), torch.cuda.empty_cache()).
+2. Load Pyannote -> Diarize -> Delete Pyannote -> Garbage Collect.
+3. Perform the mapping logic on the CPU using the resulting text and timeline objects.7
+________________
+
+
+7. Practical Application: Building the "Super-Pipeline"
+
+
+Based on the analysis of architectural components, we can define a reference architecture for a robust, local transcription "Super-Pipeline". This pipeline prioritizes accuracy and richness of metadata over raw speed.
+
+
+7.1 Pipeline Stages
+
+
+1. Ingestion & Conversion:
+   * Input: Video/Audio file (MP4, MKV, MP3).
+   * Process: Use ffmpeg to convert to 16kHz Mono WAV. This is the native format for both Whisper and Pyannote. Avoiding on-the-fly resampling during inference saves CPU cycles and reduces errors.
+   * Tool: ffmpeg-python or subprocess calls.
+2. Diarization (The "Who"):
+   * Run pyannote pipeline.
+   * Output: An RTTM file or an internal Annotation object containing speaker turns.
+   * Optimization: Pass num_speakers hint if known (e.g., a 2-person interview) to improve clustering accuracy.20
+3. Transcription (The "What"):
+   * Run faster-whisper (large-v3) with vad_filter=True and word_timestamps=True.
+   * Output: A list of Segment objects, each containing a list of Word objects.
+4. Alignment & Merging:
+   * Iterate through every Word object.
+   * Query the Diarization timeline.
+   * Attribute a speaker_id to the word.
+   * Group consecutive words with the same speaker_id into a "Subtitle Block".
+5. Output Generation:
+   * Generate an enriched SRT file: : Text...
+   * Generate a JSON transcript for programmatic use (search, indexing).
+
+
+7.2 Handling Edge Cases
+
+
+* Overlapping Speech: pyannote detects overlap, but whisper outputs a single stream. The pipeline usually assigns the text to the dominant speaker identified by Pyannote during that overlap. True multi-speaker transcription (transcribing two people speaking simultaneously) remains an open research problem, though separation models like Demucs can be used as a pre-processing step.21
+* Short Utterances: VAD filters might aggressively cut short "Yes" or "Um". Tuning the min_speech_duration_ms in VAD parameters is crucial for capturing back-channel communications in conversations.3
+________________
+
+
+8. Hardware Sizing and Performance Benchmarks
+
+
+
+
+8.1 GPU Requirements
+
+
+* Minimum: NVIDIA GTX 1060 (6GB). Can run medium models or large-v3 with aggressive INT8 quantization.
+* Recommended: NVIDIA RTX 3060 / 4060 (12GB+ VRAM). This allows large-v3 execution with float16 precision and comfortable overhead for Pyannote execution without aggressive garbage collection.
+* High-End: NVIDIA A100 / H100. Required for insanely-fast-whisper batching strategies where throughput (streams per second) is the metric, rather than single-file latency.14
+
+
+8.2 CPU Feasibility
+
+
+faster-whisper makes CPU inference viable via the int8 compute type. On a modern Apple Silicon (M1/M2/M3) chip or an Intel i7, real-time transcription (processing 1 second of audio in < 1 second) is achievable with base or small models. However, pyannote diarization is significantly slower on CPU and is generally not recommended for time-sensitive CPU-only workflows.7
+________________
+
+
+9. Future Trends and Conclusion
+
+
+The local transcription ecosystem is rapidly maturing. The current best-practice architecture involves the orchestration of specialized models: Whisper for text, Pyannote for speakers, and Wav2Vec2 for alignment. However, the field is trending towards End-to-End (E2E) models. Recent research aims to modify the Whisper architecture to predict speaker tokens directly alongside text tokens, potentially rendering the complex multi-stage pipelines obsolete.13
+Furthermore, the optimization landscape is shifting from model compression (quantization) to kernel optimization. Projects like insanely-fast-whisper leverage Flash Attention 2 to saturate GPU compute capability, offering a glimpse into a future where transcribing hundreds of hours of audio is a trivial background task.14
+
+
+Recommendations
+
+
+For developers tasked with implementing local timestamps:
+1. Use faster-whisper as the default engine. Its CTranslate2 backend offers the best balance of stability, memory efficiency, and speed for general use cases.
+2. Implement WhisperX if the use case demands "production-quality" subtitles where synchronization with video is paramount. The forced alignment is indispensable for avoiding drift.
+3. Adopt pyannote 3.1 for any application requiring speaker identification, but strictly manage VRAM resources by running it sequentially with transcription.
+By adhering to these architectural principles, it is possible to build a local ASR system that rivals or exceeds the capabilities of commercial cloud APIs, ensuring data privacy and operational resilience.
+________________
+Citations: 1
+Works cited
+1. openai/whisper: Robust Speech Recognition via Large-Scale Weak Supervision - GitHub, accessed November 21, 2025, https://github.com/openai/whisper
+2. openai/whisper-large-v3-turbo - Hugging Face, accessed November 21, 2025, https://huggingface.co/openai/whisper-large-v3-turbo
+3. Faster Whisper transcription with CTranslate2 - GitHub, accessed November 21, 2025, https://github.com/SYSTRAN/faster-whisper
+4. AIXerum/faster-whisper: faster-whisper is a reimplementation of OpenAI's Whisper model using CTranslate2, which is a fast inference engine for Transformer models. This implementation is up to 4 times faster than openai/whisper for the same accuracy while using less memory. The efficiency can be further improved with 8-bit quantization - GitHub, accessed November 21, 2025, https://github.com/AIXerum/faster-whisper
+5. 5 Ways to Speed Up Whisper Transcription | Modal Blog, accessed November 21, 2025, https://modal.com/blog/faster-transcription
+6. 100% faster Whisper Transcription - Pruna documentation, accessed November 21, 2025, https://docs.pruna.ai/en/v0.2.1/docs_pruna/tutorials/asr_whisper.html
+7. Choosing between Whisper variants: faster-whisper, insanely-fast-whisper, WhisperX | Modal Blog, accessed November 21, 2025, https://modal.com/blog/choosing-whisper-variants
+8. WhisperX: Automatic Speech Recognition with Word-level Timestamps (& Diarization) - GitHub, accessed November 21, 2025, https://github.com/m-bain/whisperX
+9. Whisper - Hugging Face, accessed November 21, 2025, https://huggingface.co/docs/transformers/en/model_doc/whisper
+10. Can't get cuda to work. · Issue #983 · m-bain/whisperX - GitHub, accessed November 21, 2025, https://github.com/m-bain/whisperX/issues/983
+11. How can I get word-level timestamps in OpenAI's Whisper ASR? - Stack Overflow, accessed November 21, 2025, https://stackoverflow.com/questions/73822353/how-can-i-get-word-level-timestamps-in-openais-whisper-asr
+12. Export to srt file · SYSTRAN faster-whisper · Discussion #93 · GitHub, accessed November 21, 2025, https://github.com/SYSTRAN/faster-whisper/discussions/93
+13. I compared the different open source whisper packages for long-form transcription - Reddit, accessed November 21, 2025, https://www.reddit.com/r/LocalLLaMA/comments/1brqwun/i_compared_the_different_open_source_whisper/
+14. Vaibhavs10/insanely-fast-whisper - GitHub, accessed November 21, 2025, https://github.com/Vaibhavs10/insanely-fast-whisper
+15. MahmoudAshraf97/whisper-diarization: Automatic Speech ... - GitHub, accessed November 21, 2025, https://github.com/MahmoudAshraf97/whisper-diarization
+16. Segmention instead of diarization for speaker count estimation - Stack Overflow, accessed November 21, 2025, https://stackoverflow.com/questions/75833879/segmention-instead-of-diarization-for-speaker-count-estimation
+17. Add Speaker Diarization to Whisper: Python Tutorial (2025 Code) - BrassTranscripts Blog, accessed November 21, 2025, https://brasstranscripts.com/blog/whisper-speaker-diarization-guide
+18. pyannote/speaker-diarization-3.1 - Hugging Face, accessed November 21, 2025, https://huggingface.co/pyannote/speaker-diarization-3.1
+19. Whisper and Pyannote: The Ultimate Solution for Speech Transcription, accessed November 21, 2025, https://scalastic.io/en/whisper-pyannote-ultimate-speech-transcription/
+20. Speaker diarization using Whisper ASR and Pyannote | by Ritesh - Medium, accessed November 21, 2025, https://medium.com/@xriteshsharmax/speaker-diarization-using-whisper-asr-and-pyannote-f0141c85d59a
+21. faster-whisper · GitHub Topics, accessed November 21, 2025, https://github.com/topics/faster-whisper
+22. Adapting pyannote.audio 2.1 pretrained speaker diarization pipeline to your own data, accessed November 21, 2025, https://colab.research.google.com/github/pyannote/pyannote-audio/blob/develop/tutorials/adapting_pretrained_pipeline.ipynb

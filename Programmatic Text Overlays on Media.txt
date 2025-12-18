@@ -1,0 +1,624 @@
+﻿Programmatic Placement of Media Overlays: A Comparative Analysis of Deterministic, Declarative, and Generative Techniques
+
+
+
+
+I. Executive Summary & Foundational Concepts
+
+
+
+
+A. Executive Summary
+
+
+This report provides a comprehensive technical analysis of programmatic methods for placing text and image overlays onto digital media, focusing on precision, temporal control, and styling. The analysis is structured to inform a "build vs. buy" or "build vs. assemble" decision for a technical stakeholder.
+The methods are categorized into five distinct pathways: (1) Low-level Command-Line Interface (CLI) tools, (2) Python-based programmatic libraries, (3) A "Hybrid Layering" workflow, (4) High-level "Declarative JSON" frameworks, and (5) The Generative AI frontier.
+A comparative analysis yields the following top-level recommendations, contingent on the specific use case:
+1. For Absolute Precision & Server-Side Batch Processing: Pathway 1, specifically FFmpeg and ImageMagick, is the recommended solution. These tools provide unparalleled, low-level, deterministic control over every pixel and frame,
+and their performance in server environments is well-established.
+2. For Maximum Styling, Precision, and Quality: Pathway 3, the Hybrid "Layering" Strategy, is the superior "expert" solution. This workflow resolves the primary conflict between styling and timing by using a tool like Pillow (Python) or ImageMagick (CLI) to render high-fidelity, stylized text to a transparent PNG, and then using FFmpeg's overlay filter to composite that PNG onto a video with exact coordinate and timeline control.
+3. For Integration into an Existing Python Application: Pathway 2, specifically the Pillow library, is the definitive choice for static images. For video, MoviePy offers a simple entry point, but this report recommends graduating to the Hybrid Pathway (Pathway 3) by using Python's subprocess module to call FFmpeg directly. This avoids the performance bottlenecks and "leaky abstractions" inherent in MoviePy.
+4. For a Scalable, Template-Driven Automation Service: Pathway 4, the Declarative "JSON-to-Media" Frameworks, is the most direct solution for building a service.
+   * Build (Open-Source): Remotion is the most powerful and modern choice, allowing video to be defined as a React program, enabling complex logic and data fetching.
+   * Buy (SaaS): Creatomate, Shotstack, and Cloudinary are production-ready, managed services that abstract all rendering complexity. The choice between them depends on a preference for a JSON-based "recipe" API (Creatomate, Shotstack) or a declarative URL-based paradigm (Cloudinary).
+   5. For Generative, Interpretive Content: Pathway 5, Generative AI (e.g., DALL-E 3, Stable Diffusion 3), is definitively not recommended for the user's stated task. These models are stochastic, not deterministic. They lack any mechanism for accepting precise coordinate or timeline instructions and are fundamentally unsuited for "exact" text placement, despite recent improvements in text legibility.
+
+
+B. Deconstructing the "Model Context Protocol" Query
+
+
+The query's reference to a "model context protocol" indicates a high degree of technical awareness, as this is a real, albeit recent, and specific term. It is, however, crucial to clarify its true purpose before proceeding.
+The Model Context Protocol (MCP) is a new open standard introduced and open-sourced by Anthropic.1 It is not a media manipulation or rendering protocol. Its purpose is to standardize how Large Language Models (LLMs) and AI agents connect to external systems for data and tool use.2 It is designed to function as a "USB-C port for AI applications" 3, allowing any compliant AI model (like Claude or ChatGPT) to securely connect to any compliant data source (like local files, databases, or third-party APIs) using a single, unified protocol.3
+MCP addresses the "N×M problem" of AI integrations, where every new AI model must have a custom-built connection for every external tool, a process that is fragile and scales poorly.5 By providing a standardized, two-way connection for function-calling and data retrieval, MCP enables AI agents to move beyond static training data and become dynamic, stateful actors that can access real-world information and perform tasks.2
+The query's conflation of this agentic orchestration protocol with generative media capability is logical. It implies an implicit, forward-looking question: "Can the newest generation of AI models—the kind that will use protocols like MCP—be controlled at a low level to perform precise, deterministic tasks like rendering text at exact coordinates?"
+This report will therefore pivot from the literal (but incorrect) interpretation of MCP to this implicit question in Section VI, which analyzes the fundamental limitations of generative AI for this specific, deterministic task.
+
+
+C. The Core Technical Dichotomy: Deterministic vs. Declarative
+
+
+The solutions available for this task fall into two distinct technical philosophies, and the user's query correctly identifies tools from both. The choice between them is the central strategic decision to be made.
+   1. Deterministic Overlay (Imperative Control)
+This pathway involves classical, imperative tools where the user is responsible for defining every parameter of the operation. Using a CLI tool like FFmpeg or a library like Pillow, the user must provide explicit, exact pixel coordinates, font sizes, and timestamps.6
+      * Tools: ImageMagick, FFmpeg, Pillow, OpenCV.
+      * Pros: Absolute, fine-grained control over every pixel and frame. High performance (when optimized). No "black box" abstractions.
+      * Cons: High complexity. The syntax, especially for FFmpeg's filter_complex, is notoriously difficult. Styling and positioning logic must be manually calculated and implemented.
+      2. Declarative / Generative Synthesis (Abstracted Control)
+This pathway involves high-level frameworks where the user defines a desired end state (the "what") and the framework's engine handles the complex implementation (the "how"). This "how" is abstracted away.
+         * Sub-Category 1: Declarative Frameworks: The user provides a "recipe," often a JSON file, that defines the media's structure, elements, and timing.8 A "media compiler" then reads this recipe and programmatically generates the complex FFmpeg commands required to render the final product.
+         * Sub-Category 2: Generative Models: The user provides a natural language "prompt." The AI model interprets this prompt to synthesize a novel output.
+         * Pros: Enormous reduction in complexity. Scalability and ease of use, particularly for template-based generation.10
+         * Cons: Loss of fine-grained control. The user is limited to the parameters exposed by the declarative framework or the interpretive whims of the generative model.
+This report is structured to directly inform the trade-offs between these two philosophies, beginning with the most granular, deterministic tools.
+
+
+II. Pathway 1: Deterministic CLI Control (ImageMagick & FFmpeg)
+
+
+This pathway represents the "build"-from-scratch option using the most powerful and ubiquitous open-source media manipulation tools available.
+
+
+A. Static Image Overlays: ImageMagick
+
+
+ImageMagick is a software suite for creating, editing, and composing bitmap images. Its magick (or legacy convert) CLI utility is the industry standard for server-side image batch processing.12
+Operators (-annotate vs. -draw)
+ImageMagick provides two primary operators for text placement: -draw and -annotate.
+         * -draw: This is a primitive operator that draws text (and other shapes) onto an image.15
+         * -annotate: This operator is a more advanced and recommended method that supersedes -draw for text. It provides more "ready" and intuitive controls for positioning, shearing, and rotation.16
+Precision Positioning (-gravity and +X+Y)
+Achieving "exact" placement in ImageMagick requires a specific understanding of its coordinate system, which is a common point of failure. Placement is a two-step process:
+         1. -gravity: This parameter (e.g., -gravity North, -gravity NorthWest, -gravity center) sets the anchor point on the base image. This effectively redefines the (0,0) origin for the subsequent -annotate operation.18
+         2. -annotate +X+Y: This offset is then applied relative to the gravity anchor.
+This system has a critical "gotcha." Without a -gravity setting, the +X+Y offset is calculated from the bottom-left of the text, which is rarely what the user expects. As one source notes, this default behavior is "probably undesirable".15
+For intuitive, "top-left" coordinate mapping, where +150+200 means 150 pixels from the left and 200 pixels from the top, the command must use -gravity NorthWest to set the anchor to the top-left corner of the image.20
+         * Example (Bad - unintuitive): magick in.jpg -annotate +100+100 "Test" out.jpg (Positions text based on its bottom-left corner).
+         * Example (Good - intuitive): magick in.jpg -gravity NorthWest -annotate +100+100 "Test" out.jpg (Positions text's top-left corner at 100,100).
+         * Example (Centered offset): magick in.jpg -gravity center -annotate +0+50 "Test" out.jpg (Positions text 50px below the exact center).
+Styling
+ImageMagick provides a rich set of flags for "stylized" text:
+         * Basic Styling: -font, -pointsize, -fill (color), -stroke (outline color), and -strokewidth.12
+         * Advanced Styling (e.g., Shadows): Advanced effects require an in-memory, multi-layer process. The text is "cloned," the clone is processed (e.g., with -shadow), and the layers are then flattened (-layers Flatten or -composite). This is complex but extremely powerful, allowing for arbitrary effects.21
+
+
+Bash
+
+
+
+
+# Example: Advanced shadow effect
+magick input.jpg -font Arial-Bold -pointsize 40 -fill white \
+ \( +clone -background Navy -shadow 80x3+5+5 \) +swap \
+ -gravity South -annotate +0+20 "Stylized Text" \
+ -layers Flatten output.jpg
+
+
+
+B. Timeline-Based Video Overlays: FFmpeg
+
+
+FFmpeg is the universal tool for video and audio transcoding. Its power for this task lies in the "filtergraph" system, which allows for complex, timed operations. The primary filter is drawtext.23
+Precision Positioning (x and y)
+The drawtext filter's x and y parameters are its most powerful feature: they are not just static numbers, they are expressions that are re-evaluated for every frame. These expressions can use built-in variables 25:
+         * w and h: Width and height of the video.
+         * text_w and text_h: Width and height of the rendered text.
+This allows for dynamic, "exact" positioning without pre-calculating coordinates. A "cheat sheet" for common placements based on 6 includes:
+         * Top Left (10px padding): x=10:y=10
+         * Top Center (10px padding): x=(w-text_w)/2:y=10
+         * Top Right (10px padding): x=w-tw-10:y=10 (Note: tw is an alias for text_w)
+         * Centered: x=(w-text_w)/2:y=(h-text_h)/2
+         * Bottom Center (10px padding): x=(w-text_w)/2:y=h-th-10
+Timeline Control (enable)
+This is the direct solution to the "certain timelines" requirement. The enable option can be set to an expression that evaluates whether the filter should be active for the current frame.23
+         * Key Syntax: enable='between(t,START,END)', where t is the current timestamp in seconds.26
+         * Example: To show text only between 12 and 18.5 seconds: enable='between(t,12,18.5)'
+         * Multiple Timelines: Multiple, non-contiguous timelines can be combined with +. To show text from 1-3 seconds and 45-50 seconds: enable='between(t,1,3)+between(t,45,50)'.28
+         * Relative to End: The filter can also be enabled relative to the end of the video, though this requires knowing the duration beforehand.29
+Styling
+Styling in drawtext is functional but brittle:
+         * Parameters: fontfile=/path/to/font.ttf, fontsize=60, fontcolor=white.24
+         * Effects: Basic box=1 (with boxcolor=black@0.5 and boxborderw=5) and shadowcolor=black (with shadowx and shadowy) are supported.25
+         * Limitations: Advanced styles like "Bold" or "Italic" are not simple flags. They often require complex fontconfig syntax (e.g., fontfile=Linux Libertine O-40\\:style=Semibold) which is system-dependent and fragile.31
+Complex Compositions (-filter_complex)
+For multiple overlays, a -filter_complex graph is required.32
+         * Multiple Text Overlays: Multiple drawtext filters are chained using a comma (,) within a single filtergraph string.23
+         * Layering Images and Text: This directly addresses the "layering images" query. A complex filtergraph uses stream labels (e.g., [0:v], [1:v], [tmp]) to "pipe" video streams between filters. The overlay filter is used to composite an image (or another video) onto the main stream, and drawtext is then chained after it.34
+Example:
+
+
+Bash
+
+
+
+
+# Chain drawtext and overlay in a filter_complex
+ffmpeg -i video.mp4 -i logo.png -filter_complex \
+ "[0:v][1:v]overlay=x=10:y=10:enable='between(t,0,10)'[tmp]; \
+  [tmp]drawtext=text='My Text':x=100:y=100:enable='between(t,5,15)'" \
+ output.mp4
+
+Critical Weakness of drawtext
+A significant limitation of drawtext is exposed in 37: it is impossible to use expressions for fontcolor. This means simple, "stylized" effects like a fade-in or color change over time are not possible. The documented workaround involves a separate blend filter and complex expressions, which is exceptionally difficult. This "brittleness" in styling is the primary motivation for seeking alternative pathways.
+
+
+III. Pathway 2: Programmatic Library Control (The Python Ecosystem)
+
+
+This pathway involves using programmatic libraries, primarily within Python, to gain the same deterministic control as the CLI tools but with the logic and flexibility of a full programming language.
+
+
+A. Pillow (PIL): The Standard for Static Images
+
+
+Pillow (a fork of the original Python Imaging Library, or PIL) is the de facto standard for non-CV-related image manipulation in Python. The ImageDraw module is its primary interface for this task.38
+Positioning (xy, anchor)
+The main function, ImageDraw.Draw.text(), takes an xy tuple (e.g., (100, 150)) for placement.7 By default, this (x, y) coordinate specifies the top-left corner of the text, which is highly intuitive.
+For more "exact" alignment (e.g., centering), Pillow provides two mechanisms:
+         1. anchor parameter: This advanced parameter (e.g., anchor="mm") allows anchoring the xy coordinate to the middle, ascender, or descender of the text, providing typographic-aware alignment.39
+         2. Manual Bounding Box Calculation: The most robust method for centering or right-aligning is to calculate the text's true bounding box. The deprecated textsize() method is unreliable. The correct method is to use font.getbbox(text) 40 or font.getoffset(text) 41, which account for font-specific padding and return the precise pixel-box of the rendered text.
+Styling & Compositing (The "Best Practice" Workflow)
+While one can draw directly onto a base image, the "stylized" requirement is best met by using an alpha compositing workflow, which provides superior quality and control over anti-aliasing.
+         1. Create a Transparent Layer: An Image.new("RGBA", base.size, (255, 255, 255, 0)) creates a new, completely transparent image the same size as the base.42
+         2. Draw onto Layer: An ImageDraw.Draw context is created for this new layer. d.text() is then used to draw the stylized text, using parameters like font, fill (which can be an RGBA tuple like (255, 0, 0, 128) for semi-transparent text), stroke_width, and stroke_fill.42
+         3. Composite: The text layer is composited onto the original image using Image.alpha_composite(base, txt).42
+This method ensures that the text's anti-aliasing is correctly blended with the base image, a failure point for more naive "draw-on-top" methods.
+
+
+B. OpenCV (cv2.putText): The "What Not to Use" Example
+
+
+OpenCV (cv2) is a dominant library in computer vision, and it includes a text-drawing function: cv2.putText.46 It is crucial to understand that this tool is not suitable for this report's "stylized" requirements.
+         * Counter-Intuitive Positioning: The org parameter (its (x, y) coordinate) specifies the bottom-left corner of the text string, not the top-left.48 This is standard for some graphics systems but counter-intuitive for general layout.
+         * Severe Styling Limitations: This is the primary failure. cv2.putText does not accept custom .ttf or .otf font files. It is limited to a small set of built-in, stroke-based fonts (e.g., FONT_HERSHEY_SIMPLEX).48 Styling is restricted to fontScale, color (as a BGR tuple), and thickness.48
+Conclusion: cv2.putText is a high-performance tool designed for real-time annotation in computer vision tasks (e.g., drawing bounding boxes and labels on a video feed).50 It is not a tool for production-quality, "stylized" media generation.
+
+
+C. MoviePy: The High-Level Abstraction
+
+
+MoviePy is a Python library for video editing. Its core paradigm is powerful: everything is a clip. A video file is a VideoFileClip, a text string is a TextClip, and an image is an ImageClip.52 These clips are then layered together using CompositeVideoClip.53
+         * Positioning: This is highly intuitive. The .set_pos() method (or newer .with_position()) can be used with presets (e.g., 'center', 'bottom') or an exact coordinate tuple (e.g., (100, 200)).53
+         * Timing: Also intuitive. .set_start() defines the clip's start time in seconds, and .set_duration() defines its length.56 This maps directly to the "certain timelines" requirement.
+         * Multiple Overlays: Multiple TextClip and ImageClip objects can be created, each with its own start time, duration, and position. They are all passed as a list to CompositeVideoClip to be rendered together.55
+Example:
+
+
+Python
+
+
+
+
+from moviepy.editor import *
+
+video = VideoFileClip("my_video.mp4")
+
+# Create a text clip
+txt_clip = TextClip("My Title", fontsize=70, color='white')
+txt_clip = txt_clip.set_pos('center').set_duration(10).set_start(5)
+
+# Create a second text clip
+txt_clip_2 = TextClip("Subtitle", fontsize=30, color='white')
+txt_clip_2 = txt_clip_2.set_pos(('left', 'bottom')).set_duration(3).set_start(15)
+
+final_video = CompositeVideoClip([video, txt_clip, txt_clip_2])
+final_video.write_videofile("output.mp4")
+
+The "Leaky Abstraction" Problem
+While simple for basic tasks, MoviePy's high-level abstraction can become a liability. A documented issue 59 reveals that applying effects (e.g., vfx.SlideIn) can override or ignore the .with_position() setting. The documented workaround—using "multiple nested CompositeVideoClips"—was noted by the user to "significantly slow down" rendering.
+This suggests that while MoviePy is excellent for simple projects, it may force the user into complex, unperformant workarounds when precision and effects are combined. For complex compositions, the user might be better served by learning FFmpeg's filter_complex (Pathway 1) than by fighting MoviePy's "magic."
+
+
+IV. Pathway 3: The Hybrid "Layering" Strategy
+
+
+This pathway directly addresses the user's "layering images could be another route" idea and stands as the superior solution for achieving both maximum styling control and precision timing.
+
+
+A. Rationale: The "Best of Both Worlds"
+
+
+This workflow resolves the core technical contradiction identified in the previous pathways:
+         * The Problem: Tools with strong styling (ImageMagick, Pillow) have no native timeline control. Tools with strong timeline control (FFmpeg) have weak and brittle styling.37
+         * The Solution: Use the best tool for each discrete job.
+         1. Job 1: Styling & Rendering: Use a styling-first tool (ImageMagick or Pillow) to render the complex, "stylized" text to a transparent PNG asset.
+         2. Job 2: Compositing & Timing: Use a video-first tool (FFmpeg) to composite this pre-rendered PNG asset onto the video.
+
+
+B. Workflow Step 1: Generating the Transparent Text Asset
+
+
+The goal is to create a .png file that contains only the stylized text on a transparent background.
+Using ImageMagick (CLI)
+The magick command can be used to generate a text label on a transparent (none) background.14
+
+
+Bash
+
+
+
+
+# Creates a file 'text_layer_1.png' with white text, Arial, 72pt
+magick -background none -fill white -font Arial -pointsize 72 \
+ label:"My Stylized Title" text_layer_1.png
+
+This single command can include all of ImageMagick's advanced styling, including shadows, strokes, and gradients, baking them into the PNG.
+Using Pillow (Python)
+The same alpha compositing workflow from Pathway 2 is used, but instead of compositing onto a base image, the transparent layer is saved directly.
+
+
+Python
+
+
+
+
+from PIL import Image, ImageDraw, ImageFont
+
+# Create a transparent RGBA image
+txt_img = Image.new("RGBA", (800, 200), (255, 255, 255, 0))
+fnt = ImageFont.truetype("Arial.ttf", 40)
+d = ImageDraw.Draw(txt_img)
+
+# Draw text (e.g., white with 50% opacity)
+d.text((10, 10), "My Transparent Text", font=fnt, fill=(255, 255, 255, 128))
+
+# Save the asset
+txt_img.save("text_layer_2.png")
+
+This workflow 43 generates a text_layer_2.png file that can be used in the next step.
+
+
+C. Workflow Step 2: Compositing the Asset onto Media
+
+
+With the "stylized" text assets generated, the problem is now a simple compositing task.
+On Static Images (ImageMagick)
+The magick command's -composite operator is used to layer the PNG asset onto the base image. The -gravity and -geometry flags provide the same precision positioning as -annotate.62
+
+
+Bash
+
+
+
+
+# Composites 'text_layer_1.png' at 100,100 from the top-left
+magick base.jpg text_layer_1.png -gravity NorthWest \
+ -geometry +100+100 -composite output.jpg
+
+On Videos (FFmpeg)
+This is the most powerful component of the hybrid workflow. Instead of the limited drawtext filter, the overlay filter is used.
+The overlay filter is designed to composite one video stream (in this case, the static PNG image) on top of another. Critically, the overlay filter accepts the exact same powerful, expression-based x, y, and enable parameters as drawtext.64
+This allows the user to swap the "brittle" drawtext filter for the robust overlay filter, gaining massive styling capabilities while losing zero positioning or timeline control.
+Example:
+
+
+Bash
+
+
+
+
+# -i video.mp4 (input 0)
+# -i text_layer_1.png (input 1)
+# -filter_complex
+#   [0:v][1:v]...     Take video from input 0 and input 1
+#   overlay=...       Composite them
+#     x=100:y=100:          at exact position 100,100
+#     enable='between(t,5,10)'  only between 5 and 10 seconds
+
+ffmpeg -i video.mp4 -i text_layer_1.png -filter_complex \
+ "[0:v][1:v]overlay=x=100:y=100:enable='between(t,5,10)'" \
+ output.mp4
+
+This single command provides the definitive solution for placing "stylized" text at "particular positions" for "certain timelines."
+
+
+V. Pathway 4: Declarative "JSON-to-Media" Frameworks
+
+
+This pathway directly addresses the "json to video thing".10 These frameworks function as "media compilers." They abstract the complexity of the previous pathways by having the user submit a high-level, declarative "recipe" (usually JSON) that defines the desired output. A rendering engine then parses this JSON and programmatically generates the necessary FFmpeg, ImageMagick, or other commands to create the final media. This is the core of the "buy" or "assemble-on-a-framework" decision.
+
+
+A. Open-Source Frameworks
+
+
+These tools provide the declarative framework, but the user is responsible for hosting the rendering engine.
+editly
+editly is a CLI and Node.js tool for declarative video editing using a JSON5 (a more forgiving superset of JSON) specification.8
+         * Paradigm: The user defines a specification with a global clips array. Each object in the clips array represents a scene. Each clip, in turn, has a layers array.8
+         * Text Layer: A text overlay is defined as a layer object with type: 'text' or type: 'slide-in-text'.8
+         * Controls: The layer object supports properties for text (content), fontPath, fontSize, color, and position (using presets like 'top', 'center', or relative coordinates).8
+         * Timing: Timing is controlled at the clip level (duration) or, for more granular control, at the layer level using start and stop properties.
+Remotion
+Remotion is a significantly more advanced declarative framework. It is not "JSON-to-video"; it is "React-to-video".67
+         * Paradigm: The user defines their video as a series of React components. This is not a static JSON recipe; it is a program.
+         * Controls:
+         * Timing: Controlled using components like <Sequence> (which renders children during a specific time-slice) and <Loop>.68
+         * Positioning: Controlled using standard React/CSS layout, typically with the <AbsoluteFill> component for positioning.68
+         * Styling: All CSS properties are available, including fonts, colors, gradients, and transforms.
+         * Key Advantage: This is the most powerful "declarative" approach for a technical team. Because the video is a React program, it can fetch data from live APIs, use complex state logic, and render dynamic content that would be impossible to define in a static JSON file. It can be rendered server-side via Node.js or @remotion/lambda for scaling.69
+
+
+B. Commercial Declarative APIs (SaaS)
+
+
+These are managed, "buy" solutions where the user interacts with an API, and the company handles all rendering infrastructure, including FFmpeg/font/codec complexities.
+JSON2Video
+         * Paradigm: A "JSON to Video" API.70 The user POSTs a JSON object that defines the movie.
+         * Syntax: The structure is Movie -> scenes -> elements.70 An element can be type: 'text'.
+         * Controls: The text element supports position: 'custom', x, and y for coordinates, style for pre-defined animations, and start and duration for timeline control.72
+Creatomate
+         * Paradigm: A "JSON to Video" or "Template to Video" API.9
+         * Syntax: The JSON structure uses a flat elements array. Each element is an object with a type property (e.g., type: "text").9
+         * Controls: This API is extremely granular. A text element has properties for x, y, width, height, x_alignment, y_alignment, fill_color, etc..9 Timing is controlled via time (start) and duration, and it has a powerful animations array for declarative effects (e.g., type: "text-slide").9
+Shotstack.io
+         * Paradigm: A "JSON to Video" API designed for programmatic, template-based video generation.74
+         * Syntax: The core object is a timeline, which contains tracks. tracks are used for layering (e.g., a text track on top of a video track). tracks contain clips.76
+         * Controls: A text overlay is a clip with an asset of type: "title". Styling (color, size) and positioning (position) are defined within the asset. Timing is controlled by the clip's in (start) and out (end) properties, defined in seconds.76
+Cloudinary
+         * Paradigm: This is a non-JSON declarative method that uses a Declarative URL for on-the-fly transformations.78
+         * Syntax: Transformations are "chained" in the image or video URL.
+         * l_text: defines a text layer.79
+         * Parameters are appended: arial_64 (font and size) 79, co_blue (color) 81, g_north_west (gravity) 82, x_100 and y_100 (x/y coordinates).80
+         * Example URL:
+https://res.cloudinary.com/.../image/upload/l_text:Arial_64:Hello,g_north_west,x_50,y_50/base_image.jpg
+         * This approach is ideal for generating dynamic, personalized images (e.g., product overlays) in real-time.
+
+
+C. Table 5.1: Comparative Analysis of Media Overlay Frameworks
+
+
+
+
+Tool / Framework
+	Core Paradigm
+	Positioning System
+	Timeline Control
+	Key Strengths
+	Key Limitations
+	ImageMagick
+	Deterministic CLI
+	-gravity + +X+Y offset 18
+	N/A (Static Images)
+	Extremely powerful styling; high-performance; ubiquitous.
+	Counter-intuitive coordinate system (-gravity). Complex syntax for advanced effects.21
+	FFmpeg
+	Deterministic CLI
+	Expression-based x/y (e.g., (w-tw)/2) 6
+	Expression-based enable='between(t,S,E)' 26
+	Absolute precision over position and timeline.
+	Styling is extremely brittle and limited (e.g., no fontcolor expressions).37 filter_complex is very complex.
+	Pillow (Python)
+	Deterministic Library
+	(x, y) tuple; anchor param 38
+	N/A (Static Images)
+	Intuitive top-left (x,y) coordinates. Superior alpha compositing workflow.42
+	Bounding box calculation for centering is manual.41
+	MoviePy (Python)
+	Deterministic Library
+	.set_pos((x,y)) or presets 53
+	.set_start(S) and .set_duration(D) 56
+	Simple, intuitive API for basic tasks.
+	"Leaky abstraction": effects can break positioning. Poor performance on complex composites.59
+	Hybrid (Pillow+FFmpeg)
+	Deterministic Workflow
+	FFmpeg overlay x/y expressions 65
+	FFmpeg overlay enable='between(t,S,E)' 64
+	Best of all worlds: Max styling (Pillow/IM) + Max precision (FFmpeg).
+	Multi-step process; requires managing intermediate "asset" files.
+	Editly (OSS)
+	Declarative JSON5
+	Presets ('top') or relative position 8
+	Clip duration; Layer start/stop 8
+	Simple, self-hostable, declarative video.
+	Positioning system is less precise than pixel-based methods.
+	Remotion (OSS)
+	Declarative React
+	React/CSS layout (e.g., <AbsoluteFill>) 68
+	React components (e.g., <Sequence>) 68
+	Programmatic logic in video (API calls, state). Full CSS styling.
+	Requires React/Node.js expertise. More complex setup than JSON.
+	Creatomate (SaaS)
+	Declarative JSON API
+	x, y, width, height, x_alignment 9
+	time (start) and duration 9
+	Extremely granular control over position, timing, and animation via JSON.
+	Managed "black box" service; vendor lock-in; cost.
+	Shotstack (SaaS)
+	Declarative JSON API
+	position presets; offset 76
+	in (start) and out (end) on clip 76
+	Strong "timeline-and-track" metaphor, good for sequence-based logic.
+	Less granular positioning than Creatomate.
+	Cloudinary (SaaS)
+	Declarative URL
+	g_ (gravity), x_ (offset), y_ (offset) 83
+	du_ (duration), so_ (start offset)
+	Excellent for real-time, on-the-fly image/video generation.
+	All logic is embedded in a complex URL string, which can be unwieldy.
+	
+
+VI. Pathway 5: The Generative AI Frontier and Its Limitations
+
+
+This section addresses the implicit query about using cutting-edge AI for this task, as flagged by the "model context protocol" term. The analysis concludes that generative AI is, by its very nature, the wrong tool for a task that requires deterministic precision.
+
+
+A. Rationale: The Wrong Tool for a Precision Task
+
+
+The user's requirements are "exact text overlays," "particular positions," and "certain timelines." These are terms of deterministic control.
+Generative AI models, such as DALL-E 3 or Stable Diffusion, are stochastic (non-deterministic). They are designed to interpret a prompt and synthesize a novel, probable output. They are not rendering engines that accept coordinate-based instructions. This is a fundamental mismatch of paradigms.
+
+
+B. Why Generative AI Fails at Precise Text Rendering
+
+
+The common "gibberish text" 90 and misspelled words 87 seen in generative AI outputs are not simple bugs; they are symptoms of the models' core architecture and training.
+1. Text as Texture, Not Logic
+The primary failure point is conceptual. Diffusion models are trained on millions of images. To the model, a string of text is not a logical sequence of characters representing language; it is just another visual pattern or texture, no different from the pattern of bricks on a wall or the fur on a cat.84 The models have "NO UNDERSTANDING" of what the images are.85 They are trained to mimic the visual appearance of text, not its semantic and structural logic.86
+2. The Technical Barrier: Tokenization
+The why behind this failure is technical: tokenization.
+            * Most diffusion models (like DALL-E 2) and LLMs (like T5, used by DALL-E 3) do not use character-level tokenizers.87 They use word-level or subword-level tokenizers, such as Byte Pair Encoding (BPE).88
+            * When a prompt like "A sign that says 'tokenization'" is fed to the model, the text encoder does not see the characters 't', 'o', 'k', 'e', 'n'... It sees subword tokens like ["token", "ization"].88
+            * The diffusion model is then tasked with a near-impossible mapping: it must render a precise, character-level sequence of pixels ("tokenization") based on a subword-level token ("ization") that contains no character-level information.87
+            * This mismatch is the direct cause of misspellings, "gibberish text," and inconsistent fonts: the model is effectively "guessing" the spelling based on a high-level token.86 In contrast, character-level models are computationally more expensive but far better at modeling spelling and morphology.91
+3. Lack of Coordinate-Based Control
+This is the most fundamental flaw for the user's task. Generative models do not accept instructions like x: 100, y: 100. A user can prompt for "a red circle in the top-left corner," but this is an interpretive request, not a deterministic command. The model will place a red circle in an area it "understands" as the top-left, but it will not be at pixel (0, 0). The models are not designed for precise spatial relationships.93
+
+
+C. Recent Improvements (and Why They Still Miss the Mark)
+
+
+Recent models like DALL-E 3 87 and Stable Diffusion 3 95 are significantly better at rendering legible text. The DALL-E 3 paper explains this is due to training on highly descriptive "synthetic captions," which improved prompt-following.87
+However, "better spelling" does not equal "precision placement." The models are still stochastic and offer no coordinate-based API. They can produce an image of a sign with the correct text, but they cannot be used to place that text at a "particular position" on an existing image in a deterministic way.
+
+
+D. Debunking "JSON-to-Image" (Generative)
+
+
+An emerging trend is the use of JSON in generative AI prompting.97 It is critical to understand this is not a deterministic rendering process. This method uses a JSON structure to improve prompt clarity and reduce ambiguity, not to define coordinates.
+            * Example: {"subject": "cat", "style": "cartoon", "action": "sleeping"}
+            * This is still prompt engineering. It is a structured way to write a prompt, which is then interpreted by the stochastic AI model. It does not map to the deterministic, JSON-based rendering of Pathway 4.
+
+
+VII. Final Synthesis and Recommendations
+
+
+Based on the exhaustive analysis of all five pathways, the following provides a direct, actionable recommendation matrix to inform the final technical solution.
+
+
+A. Recommendation for Absolute Precision & Server-Side Batch Processing
+
+
+            * Pathway: Pathway 1 (FFmpeg & ImageMagick).
+            * Rationale: These tools are the bedrock of media processing for a reason. They are "whip-and-chair" tools that do exactly what they are told, with no abstractions. The user's demand for "exact" and "particular" maps directly to FFmpeg's expression-based x/y coordinates 6 and ImageMagick's -gravity NorthWest with +X+Y offsets.20 The enable='between(t,S,E)' syntax 26 is a complete, robust solution for the "certain timelines" requirement.
+
+
+B. Recommendation for Maximum Styling, Precision, and Quality
+
+
+            * Pathway: Pathway 3 (The Hybrid "Layering" Strategy).
+            * Rationale: This is the definitive "expert" solution. It strategically resolves the core contradiction in the user's query ("stylized" vs. "exact timeline"). It circumvents the critical, documented weakness of FFmpeg's drawtext filter (i.e., its inability to animate color) 37 by offloading the "stylized" rendering to a superior tool (Pillow or ImageMagick).42 The resulting transparent PNG asset is then composited using FFmpeg's overlay filter, which retains all of drawtext's precision positioning and timing controls.64
+
+
+C. Recommendation for Integration into a Python Application
+
+
+            * Pathway: Pathway 2 (Python Libraries) / Pathway 3 (Hybrid).
+            * Rationale: For static images, Pillow is the clear and sole recommendation.7 For video, MoviePy 53 is a viable starting point for simple projects. However, due to its documented performance and abstraction-breaking issues 59, this report strongly recommends building the application around the Hybrid Pathway (Pathway 3). The Python application should use Pillow to generate the styled text layers 43 and then use the subprocess module to call the FFmpeg CLI (Pathway 1) for compositing. This is more robust and performant than a pure-Python MoviePy solution.
+
+
+D. Recommendation for a Scalable, Template-Driven Automation Service
+
+
+            * Pathway: Pathway 4 (Declarative "JSON-to-Media" Frameworks).
+            * Rationale: This pathway directly answers the "json to video thing" part of the query and represents the fastest, most scalable path to a production service. The "build vs. buy" choice is clear:
+            * Build (Open-Source): If the team has React expertise and requires complex, dynamic logic (e.g., "video as a program"), Remotion is the most powerful and modern choice.67
+            * Buy (SaaS): For a pure API-driven, template-based service, Creatomate 9 (for granular JSON control), Shotstack 76 (for a track/timeline metaphor), or Cloudinary 79 (for a URL-based paradigm) are all production-ready, managed solutions that abstract all rendering complexity.
+
+
+E. Final Verdict on Generative AI
+
+
+            * Pathway: Pathway 5 (Generative AI).
+            * Rationale: This pathway is not recommended for the user's stated task. It is fundamentally unsuited for "exact text overlays" at "particular positions." The stochastic, interpretive nature of generative models 84 is the antithesis of the deterministic, coordinate-based control the user requires. Its "text-as-texture" understanding 84 and subword-tokenization limitations 88 make it incapable of the precision and reliability offered by Pathways 1-4.
+Works cited
+            1. Introducing the Model Context Protocol \ Anthropic, accessed November 12, 2025, https://www.anthropic.com/news/model-context-protocol
+            2. What is Model Context Protocol (MCP)? A guide | Google Cloud, accessed November 12, 2025, https://cloud.google.com/discover/what-is-model-context-protocol
+            3. Model Context Protocol, accessed November 12, 2025, https://modelcontextprotocol.io/
+            4. The Model Context Protocol Explained | by Zia Babar - Medium, accessed November 12, 2025, https://medium.com/@zbabar/the-model-context-protocol-explained-5f35223e4d56
+            5. What Is the Model Context Protocol (MCP) and How It Works - Descope, accessed November 12, 2025, https://www.descope.com/learn/post/mcp
+            6. How to position drawtext text - ffmpeg - Super User, accessed November 12, 2025, https://superuser.com/questions/939357/how-to-position-drawtext-text
+            7. ImageDraw module - Pillow (PIL Fork) 12.0.0 documentation, accessed November 12, 2025, https://pillow.readthedocs.io/en/stable/reference/ImageDraw.html
+            8. mifi/editly: Slick, declarative command line video editing & API - GitHub, accessed November 12, 2025, https://github.com/mifi/editly
+            9. JSON-to-video: How to Create Videos from JSON - Creatomate, accessed November 12, 2025, https://creatomate.com/blog/json-to-video-how-to-create-videos-from-json
+            10. I've created a tool to automate video creation using a simple JSON input. Would this be useful for your workflow? : r/DigitalMarketing - Reddit, accessed November 12, 2025, https://www.reddit.com/r/DigitalMarketing/comments/1mwvrtf/ive_created_a_tool_to_automate_video_creation/
+            11. I building a project to generate videos from JSON, enabling video creation via an API. Looking for feedback and ideas! : r/SideProject - Reddit, accessed November 12, 2025, https://www.reddit.com/r/SideProject/comments/1mwvnqp/i_building_a_project_to_generate_videos_from_json/
+            12. ImageMagick Examples -- Text to Image Handling, accessed November 12, 2025, https://usage.imagemagick.org/text/
+            13. A few basic (but powerful) ImageMagick commands | by Sunny Srinidhi - Medium, accessed November 12, 2025, https://contactsunny.medium.com/a-few-basic-but-powerful-imagemagick-commands-b5809b0a1076
+            14. Command-line Tools: Convert - ImageMagick, accessed November 12, 2025, https://imagemagick.org/script/convert.php
+            15. Command-line Options - ImageMagick, accessed November 12, 2025, https://imagemagick.org/script/command-line-options.php
+            16. Difference between caption, draw, annotate, label while adding text to ImageMagick, accessed November 12, 2025, https://stackoverflow.com/questions/55469545/difference-between-caption-draw-annotate-label-while-adding-text-to-imagemagi
+            17. ImageMagick text display – Geo Imagine Developer - Karttur on GitHub.com, accessed November 12, 2025, https://karttur.github.io/setup-theme-blog/blog/add-text-to-image/
+            18. Add text on image at specific point using imagemagick - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/23236898/add-text-on-image-at-specific-point-using-imagemagick
+            19. Add Text in the center of the image using ImageMagick - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/78481540/add-text-in-the-center-of-the-image-using-imagemagick
+            20. Positioning element(text,image) - Legacy ImageMagick Discussions Archive, accessed November 12, 2025, https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=35202
+            21. Adding drop shadow and smoothing to font command #5032 - GitHub, accessed November 12, 2025, https://github.com/ImageMagick/ImageMagick/discussions/5032
+            22. How to -draw text and -shadow it in ImageMagick? - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/20858338/how-to-draw-text-and-shadow-it-in-imagemagick
+            23. FFmpeg Filters Documentation, accessed November 12, 2025, https://ffmpeg.org/ffmpeg-filters.html
+            24. FFmpeg's Drawtext Filter with native language texts | by Abdullah Farwees - Medium, accessed November 12, 2025, https://medium.com/@abdullah.farwees/ffmpegs-drawtext-filter-with-native-language-texts-b9b49721808a
+            25. How to set X and Y position dynamically that is enter by user in Drawtext FFMpeg?, accessed November 12, 2025, https://superuser.com/questions/1456088/how-to-set-x-and-y-position-dynamically-that-is-enter-by-user-in-drawtext-ffmpeg
+            26. provide time period in ffmpeg drawtext filter - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/21354421/provide-time-period-in-ffmpeg-drawtext-filter
+            27. ffmpeg - adding text to a video between two times - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/50735335/ffmpeg-adding-text-to-a-video-between-two-times
+            28. ffmpeg - videoFilter - draw text between one time and between another time - Super User, accessed November 12, 2025, https://superuser.com/questions/1281017/videofilter-draw-text-between-one-time-and-between-another-time
+            29. Is there any way to add drawtext filter in video at the last 3 seconds by enable function in ffmpeg - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/68526561/is-there-any-way-to-add-drawtext-filter-in-video-at-the-last-3-seconds-by-enable
+            30. ffmpeg drawtext filter - create transparent background with text, accessed November 12, 2025, https://video.stackexchange.com/questions/15551/ffmpeg-drawtext-filter-create-transparent-background-with-text
+            31. ffmpeg- drawtext style- bold, italics, underline - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/43254634/ffmpeg-drawtext-style-bold-italics-underline
+            32. ffmpeg Documentation, accessed November 12, 2025, https://ffmpeg.org/ffmpeg-all.html
+            33. ffmpeg multiple text in one command ( drawtext ) - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/11138832/ffmpeg-multiple-text-in-one-command-drawtext
+            34. Multiple effect overlays with FFmpeg - Super User, accessed November 12, 2025, https://superuser.com/questions/567606/multiple-effect-overlays-with-ffmpeg
+            35. Adding multiple lines of text that fade in and out at different times : r/ffmpeg - Reddit, accessed November 12, 2025, https://www.reddit.com/r/ffmpeg/comments/1bcxa7g/adding_multiple_lines_of_text_that_fade_in_and/
+            36. FFmpeg how to add drawtext on filter complex along with watermark and palettegen, accessed November 12, 2025, https://stackoverflow.com/questions/52783876/ffmpeg-how-to-add-drawtext-on-filter-complex-along-with-watermark-and-palettegen
+            37. DrawText FFmpeg expression on fontcolor - Super User, accessed November 12, 2025, https://superuser.com/questions/666970/drawtext-ffmpeg-expression-on-fontcolor
+            38. Python PIL | ImageDraw.Draw.text() - GeeksforGeeks, accessed November 12, 2025, https://www.geeksforgeeks.org/python/python-pil-imagedraw-draw-text/
+            39. Drawing Text on Images with Pillow and Python, accessed November 12, 2025, https://www.blog.pythonlibrary.org/2021/02/02/drawing-text-on-images-with-pillow-and-python/
+            40. python pil draw text offset - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/23845773/python-pil-draw-text-offset
+            41. Pillow ImageDraw text coordinates to center - python - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/59008322/pillow-imagedraw-text-coordinates-to-center
+            42. ImageDraw module - Pillow (PIL Fork) 12.1.0.dev0 documentation, accessed November 12, 2025, https://pillow.readthedocs.io/en/latest/reference/ImageDraw.html
+            43. PIL: draw transparent text on top of an image - python - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/47123649/pil-draw-transparent-text-on-top-of-an-image
+            44. Python Pillow - Writing Text on Image - GeeksforGeeks, accessed November 12, 2025, https://www.geeksforgeeks.org/python/python-pillow-writing-text-on-image/
+            45. Adding Text Into Image Using PIL Library Python | by Handhika Yanuar Pratama, accessed November 12, 2025, https://python.plainenglish.io/adding-text-into-image-using-pil-library-python-4610a45e9b71
+            46. Drawing Functions - OpenCV Documentation, accessed November 12, 2025, https://docs.opencv.org/4.x/d6/d6e/group__imgproc__draw.html
+            47. Drawing Shapes and Text in Images with OpenCV - Python in Plain English - PlainEnglish.io, accessed November 12, 2025, https://python.plainenglish.io/drawing-shapes-and-text-in-images-with-opencv-00a497c919e1
+            48. Python OpenCV | cv2.putText() method - GeeksforGeeks, accessed November 12, 2025, https://www.geeksforgeeks.org/python/python-opencv-cv2-puttext-method/
+            49. Align text in the putText() in OpenCV - python - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/53111837/align-text-in-the-puttext-in-opencv
+            50. Displaying the Coordinates of Points Clicked on the Image using Python OpenCV, accessed November 12, 2025, https://techvidvan.com/tutorials/displaying-the-coordinates-of-points-clicked-on-the-image-using-python-opencv/
+            51. Draw Text with cv2.putText (OpenCV) - Roboflow, accessed November 12, 2025, https://roboflow.com/use-opencv/draw-text-with-cv2-puttext
+            52. moviepy.video.VideoClip.TextClip, accessed November 12, 2025, https://zulko.github.io/moviepy/reference/reference/moviepy.video.VideoClip.TextClip.html
+            53. MoviePy – Inserting Text in the Video - GeeksforGeeks, accessed November 12, 2025, https://www.geeksforgeeks.org/python/moviepy-inserting-text-in-the-video/
+            54. Add text overlay to start of each clip and then concatenate them. Moviepy - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/73513758/add-text-overlay-to-start-of-each-clip-and-then-concatenate-them-moviepy
+            55. Add text overlay : r/moviepy - Reddit, accessed November 12, 2025, https://www.reddit.com/r/moviepy/comments/1hox71k/add_text_overlay/
+            56. Annotating Video Clips With MoviePy - Dennis O'Keeffe, accessed November 12, 2025, https://www.dennisokeeffe.com/blog/2021-07-31-annotating-video-clips-with-moviepy
+            57. Annotating Video Clips With MoviePy | by Dennis O'Keeffe | Medium, accessed November 12, 2025, https://medium.com/@dennisokeeffe/annotating-video-clips-with-moviepy-617fe859f22f
+            58. How would you add multiple textclips to a video at diffrent timestamps using moviepy in python? - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/65209725/how-would-you-add-multiple-textclips-to-a-video-at-diffrent-timestamps-using-mov
+            59. Moviepy V2 How do you position a TextClip and apply an effect? - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/79399555/moviepy-v2-how-do-you-position-a-textclip-and-apply-an-effect
+            60. Imagemagick text with transparent background - Stack Overflow, accessed November 12, 2025, https://stackoverflow.com/questions/39919143/imagemagick-text-with-transparent-background
+            61. Create transparent png image with Python - Pillow - GeeksforGeeks, accessed November 12, 2025, https://www.geeksforgeeks.org/python/create-transparent-png-image-with-python-pillow/
+            62. Command-line Tools: Composite - ImageMagick, accessed November 12, 2025, https://imagemagick.org/script/composite.php
+            63. Composing Transparent Images - Legacy ImageMagick Discussions Archive, accessed November 12, 2025, https://www.imagemagick.org/discourse-server/viewtopic.php?t=36453
+            64. How to show overlay image in a certain time span with ffmpeg - Super User, accessed November 12, 2025, https://superuser.com/questions/713498/how-to-show-overlay-image-in-a-certain-time-span-with-ffmpeg
+            65. Overlaying images on a video | FFMPEG - YouTube, accessed November 12, 2025, https://www.youtube.com/watch?v=dGFXAk-KClA
+            66. FFMPEG: Overlay a video on a video after x seconds - DEV Community, accessed November 12, 2025, https://dev.to/oskarahl/ffmpeg-overlay-a-video-on-a-video-after-x-seconds-4fc9
+            67. Remotion | Make videos programmatically, accessed November 12, 2025, https://www.remotion.dev/
+            68. Remotion | Make videos programmatically, accessed November 12, 2025, https://www.remotion.dev/docs/remotion
+            69. Remotion Lambda - A distributed video renderer, accessed November 12, 2025, https://www.remotion.dev/lambda
+            70. JSON2Video/json2video-php-sdk: Video automation with PHP: add watermarks, resize videos, create slideshows, add soundtrack, voice-over with text-to-speech (TTS), text animations. - GitHub, accessed November 12, 2025, https://github.com/JSON2Video/json2video-php-sdk
+            71. Mastering AI Video Automation with JSON2Video and Make.com - YouTube, accessed November 12, 2025, https://www.youtube.com/watch?v=YXOC5Is1AqI
+            72. Voice - JSON2VIDEO Documentation, accessed November 12, 2025, https://json2video.com/docs/v2/api-reference/json-syntax/element/voice
+            73. Creatomate: API for Automated Video Generation, accessed November 12, 2025, https://creatomate.com/
+            74. JSON to Video, Image and Audio Templates - Shotstack, accessed November 12, 2025, https://shotstack.io/templates/
+            75. Generate video from JSON using API - Shotstack, accessed November 12, 2025, https://shotstack.io/use-cases/scenarios/api/json-to-video-api/
+            76. Hello World - Edit your first video using JSON - Shotstack, accessed November 12, 2025, https://shotstack.io/learn/hello-world/
+            77. Hello World - Edit videos using JSON and Postman - Shotstack, accessed November 12, 2025, https://shotstack.io/learn/hello-world-postman/
+            78. A Guide to Adding Text to Images with Python-PIL - Cloudinary, accessed November 12, 2025, https://cloudinary.com/guides/image-effects/a-guide-to-adding-text-to-images-with-python
+            79. Add Text Overlays to Images Using Cloudinary - CodeTV, accessed November 12, 2025, https://codetv.dev/blog/add-text-overlay-cloudinary
+            80. Placing layers on images - Cloudinary, accessed November 12, 2025, https://cloudinary.com/documentation/layers
+            81. How to Add Text Overlays to Images? - Cloudinary Support, accessed November 12, 2025, https://support.cloudinary.com/hc/en-us/articles/202521442-How-to-Add-Text-Overlays-to-Images
+            82. Adding Text Overlays to Images with Cloudinary's Management Console, accessed November 12, 2025, https://support.cloudinary.com/hc/en-us/articles/360013245620-Adding-Text-Overlays-to-Images-with-Cloudinary-s-Management-Console
+            83. Dynamic coordinate position for text overlays - Cloudinary Support, accessed November 12, 2025, https://support.cloudinary.com/hc/en-us/community/posts/360010347560-Dynamic-coordinate-position-for-text-overlays
+            84. accessed November 12, 2025, https://medium.com/@markus_brinsa/why-ai-fails-with-text-inside-images-and-how-it-could-change-b0ed18cd5a18#:~:text=The%20core%20problem%3A%20AI%20treats%20text%20as%20another%20visual%20pattern&text=Instead%2C%20they%20perceive%20text%20as,and%20words%20are%20discrete%20objects.
+            85. Why can't the AI spell anything correctly? : r/midjourney - Reddit, accessed November 12, 2025, https://www.reddit.com/r/midjourney/comments/z4lil4/why_cant_the_ai_spell_anything_correctly/
+            86. Why can't AI image generators spell? - Third Tier, accessed November 12, 2025, https://www.thirdtier.net/2024/08/26/why-cant-ai-image-generators-spell/
+            87. Make dalle-3 to produce text I ask for - API - OpenAI Developer Community, accessed November 12, 2025, https://community.openai.com/t/make-dalle-3-to-produce-text-i-ask-for/703020
+            88. Word, Subword, and Character-Based Tokenization: Know the Difference, accessed November 12, 2025, https://towardsdatascience.com/word-subword-and-character-based-tokenization-know-the-difference-ea0976b64e17/
+            89. DesignDiffusion: High-Quality Text-to-Design Image Generation with Diffusion Models - arXiv, accessed November 12, 2025, https://arxiv.org/html/2503.01645v1
+            90. How We Solved the Text Problem in AI Generated Images - Stockimg AI, accessed November 12, 2025, https://stockimg.ai/blog/ai-and-technology/fix-your-ai-created-text
+            91. Converting Token-level language models to Character-level ones - Medium, accessed November 12, 2025, https://medium.com/@ML-today/converting-token-level-language-models-to-character-level-ones-7dde71e3de1b
+            92. What is the difference between word-based and char-based text generation RNNs?, accessed November 12, 2025, https://datascience.stackexchange.com/questions/13138/what-is-the-difference-between-word-based-and-char-based-text-generation-rnns
+            93. how do i force insert 'text' in images? · AUTOMATIC1111 stable-diffusion-webui · Discussion #3473 - GitHub, accessed November 12, 2025, https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/3473
+            94. Improving Image Generation with Better Captions - OpenAI, accessed November 12, 2025, https://cdn.openai.com/papers/dall-e-3.pdf
+            95. Stable Diffusion 3 can really handle text. DALLE can't do this. I love DALLE but this is nuts. : r/StableDiffusion - Reddit, accessed November 12, 2025, https://www.reddit.com/r/StableDiffusion/comments/1axkzz1/stable_diffusion_3_can_really_handle_text_dalle/
+            96. Stable Diffusion Vs. DALL.E: Which AI Art Generator Is Better? - ClickUp, accessed November 12, 2025, https://clickup.com/blog/stable-diffusion-vs-dall-e/
+            97. JSON Prompting for AI Image Generation – A Complete Guide with Examples | ImagineArt, accessed November 12, 2025, https://www.imagine.art/blogs/json-prompting-for-ai-image-generation
+            98. ChatGPT JSON Image Generation: Stunning Prompts & Easy Guide | by Zypa.in - Medium, accessed November 12, 2025, https://medium.com/@zypa.official/chatgpt-json-image-generation-stunning-prompts-easy-guide-82a14e0ed135
+            99. GPT4o Ultimate Consistency: How I Automated AI Image Prompt Engineering with Python + JSON - YouTube, accessed November 12, 2025, https://www.youtube.com/watch?v=P2J-5kNn4Uo
+            100. Semi-Transparent Text on Transparent Background - Legacy ImageMagick Discussions Archive, accessed November 12, 2025, https://www.imagemagick.org/discourse-server/viewtopic.php?t=16426

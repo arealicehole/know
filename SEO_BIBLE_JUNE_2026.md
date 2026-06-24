@@ -1,149 +1,170 @@
-# The SEO & Agentic Commerce Bible (June 2026 Edition)
+# The SEO & Agentic Commerce Bible
 
-**Version:** 3.0 (Post-March & May 2026 Core Updates + Restaurant Deep Dive)  
-**Based on:** SEO_BIBLE_JAN_2026.md (v2.0)  
-**Audit Date:** June 24, 2026
+**Second Edition — Revised June 2026**
 
----
-
-## 1. The Paradigm Shift: Authenticity & Agents (Updated)
-
-**Status: CRITICAL (Reinforced by March & May 2026 Core Updates)**
-
-The December 2025 Core Update and subsequent March 2026 and May 2026 Core Updates confirmed the bifurcation:
-
-1. **Human Layer** — Demands first-hand experience, originality, and "Information Gain"
-2. **Agent Layer** — Demands structured data (UCP, schema, specs.json)
-
-**New 2026 Reality**: "Information Gain" has become one of the strongest defensive signals against core update volatility. Content that merely rephrases existing SERP results is heavily demoted.
-
-**The Golden Rule for Mid-2026**:
-> Humans want stories + proof. Agents want clean data. Your architecture must deliver both while adding genuine new information.
+**Version:** 2.0  
+**Last Major Update:** June 24, 2026  
+**Previous Edition:** January 2026
 
 ---
 
-## 2. Technical Architecture Updates
+## The Core Thesis
 
-### 2.1 Universal Commerce Protocol (UCP)
-**Status:** LIVE and expanding (announced Jan 2026 at NRF)
+The SEO landscape has split into two parallel systems that must be optimized simultaneously:
 
-Implementation guidance remains valid. Merchants should continue maintaining the `/.well-known/ucp` manifest and real-time inventory sync.
+- **Human Layer**: Rewards first-hand experience, originality, and genuine "Information Gain."
+- **Agent Layer**: Rewards clean, structured, machine-readable data (UCP manifests, schema, specs.json).
 
-### 2.2 Schema Strategy
-- Continue heavy use of `Dataset`, `Restaurant` + `Menu` schema, and `potentialAction` for voice/reservations.
-- Add `Speakable` schema on key content for voice assistants.
+**Golden Rule (2026)**  
+> Humans want stories and proof. Agents want structured data. The winners serve both while adding real new information that didn’t exist before.
 
-### 2.3 Crawler Management
-Robots.txt guidance remains correct. Do not block legitimate AI crawlers.
+The December 2025, March 2026, and May 2026 Core Updates have all reinforced this direction. Generic or rephrased content is being systematically demoted.
 
 ---
 
-## 3. Content Strategy (2026 Reinforcement)
+## 1. Technical Architecture
 
-The March and May 2026 Core Updates doubled down on **Information Gain**.
+### 1.1 Universal Commerce Protocol (UCP)
 
-**New Requirements**:
-- Every major page must contain proprietary data, original case studies, first-hand tests, or unique insights.
-- Avoid "rephrasing the internet" — even well-written AI summaries of existing content are now penalized.
+**Status:** Live and expanding since January 2026 (NRF launch).
 
-**Mattress Land Structure** remains effective when combined with real data hooks.
+Merchants must expose a machine-readable manifest at `/.well-known/ucp` that declares capabilities for discovery, checkout, fulfillment, discounts, and order management. This enables AI agents (Gemini, ChatGPT, etc.) to transact without a human visiting the site.
+
+**Requirements**
+- Real-time sync with inventory
+- Support for Agent Payments Protocol (AP2) tokens
+- Rate limiting to prevent agent abuse
+
+### 1.2 Schema Strategy
+
+Agents and answer engines prioritize structured data over marketing copy.
+
+**Recommended schemas by use case:**
+- E-commerce / Data sites → `Dataset`
+- Restaurants & Local Services → `Restaurant` + `Menu` + `MenuItem`
+- Transactional actions → `potentialAction` (`ReserveAction`, `BuyAction`, `OrderAction`)
+- Voice optimization → `Speakable`
+
+### 1.3 Crawler Access
+
+Do not block AI crawlers. Blocking `GPTBot`, `OAI-SearchBot`, or `Google-Extended` reduces visibility in answer engines and agentic surfaces.
 
 ---
 
-## 4. Local SEO: The Entity Model (Expanded)
+## 2. Content Strategy
 
-### 4.1 The "Core 30" Structure
-Still valid. For restaurants, treat every menu item or service variation as a potential dedicated page when volume justifies it.
+### 2.1 Information Gain (The 2026 Defensive Standard)
 
-### 4.2 GBP Optimization — 2026 Reality
-- **100+ Photo Rule**: Widely validated in practice. Profiles with 100+ high-quality, appetizing photos consistently outperform.
-- **Review Velocity** > total review count. Fresh reviews (last 30–60 days) are disproportionately important.
-- Upload new photos **weekly**. Freshness signals matter.
+The March and May 2026 Core Updates made “Information Gain” one of the strongest ranking signals. Content that merely rephrases what already ranks well is now heavily penalized.
 
-### 4.3 Hyper-Local Signals
-Event schema, local citations, and chamber links remain strong.
+**Winning content must contain one or more of the following:**
+- Proprietary data or original research
+- First-hand experience and case studies
+- Unique tests or experiments
+- Novel analysis or insights
+
+### 2.2 The Mattress Land Structure (Human + Agent Optimized)
+
+Every important page should follow this pattern:
+1. Exact-match H1
+2. Strong data hook in the first 100 words
+3. Comparison tables or pricing (agents love structured data)
+4. FAQPage schema answering real user questions
+5. Visual proof (photos/videos of real work)
 
 ---
 
-## NEW SECTION: Restaurant Local SEO Case Study (2026)
+## 3. Local SEO
+
+### 3.1 The Core 30 Structure
+
+Build a knowledge graph node:
+- 1 Homepage
+- 3–4 Category pages
+- 25–30 specific service pages (one per real offering in your Google Business Profile)
+
+### 3.2 Google Business Profile Optimization
+
+- Upload **100+ high-quality photos** and continue adding new ones weekly
+- Maintain perfect NAP consistency
+- Respond to every review within 24 hours
+- Post at least weekly
+- Enable all relevant attributes
+
+### 3.3 Review Velocity
+
+Fresh reviews (last 30–60 days) now carry more weight than total review count. Build systems that generate consistent, genuine reviews.
+
+---
+
+## 4. Restaurant Local SEO Case Study (2026)
 
 ### Objective
-Dominate the local Map Pack, Google Lens, AI Overviews, and voice search for a restaurant while driving direct reservations and calls.
+Dominate the local Map Pack, Google Lens, AI Overviews, and voice assistants while driving direct reservations.
 
-### 6-Month Execution Roadmap
+### 6-Month Playbook
 
-**Month 1–2: Foundation**
-- Claim and fully optimize Google Business Profile
-- Accurate categories + all attributes
-- Upload 100+ high-quality photos (food, interior, team, ambiance) — many geo-tagged
-- Upload current menu
-- Implement `Restaurant` + `Menu` + `MenuItem` + `ReserveAction` schema on website
+**Phase 1 (Months 1–2): Foundation**
+- Fully optimize Google Business Profile (categories, attributes, hours, menu upload)
+- Upload 100+ high-quality, appetizing photos (many geo-tagged)
+- Implement `Restaurant` + full `Menu` schema + `ReserveAction`
 - Fix NAP consistency across all directories
 
-**Month 2–4: Velocity Engine**
-- Install table QR codes + SMS review request system
+**Phase 2 (Months 2–4): Velocity Engine**
+- Deploy table QR codes + automated SMS review requests
 - Target 8–15 new Google reviews per month
-- Post to GBP at least once per week (specials, events, behind-the-scenes)
-- Add new photos weekly
+- Post to GBP weekly
+- Add new photos every week
 
-**Month 4–6: Scale & Defend**
-- Create neighborhood-specific landing pages with matching schema
-- Build review velocity and photo freshness into ongoing operations
-- Monitor GBP Insights + AI Overview appearances
-- Add `potentialAction` schema for reservations
+**Phase 3 (Months 4–6): Scale**
+- Build neighborhood-specific landing pages
+- Add voice-action schema for reservations
+- Monitor GBP Insights and AI Overview appearances
 
-### Expected Outcomes
-- 3–7× increase in Map Pack visibility and calls
-- Strong presence in Google Lens visual search
-- Improved performance in AI Overviews and voice assistants
-- Reduced dependence on third-party delivery platforms
-
-### Measurement
-- GBP Insights (calls, directions, photo views)
-- Reservation source tracking
-- Review velocity and response rate
-- Local keyword rankings + AI Overview presence
+### Expected Results
+- 3–7× increase in Map Pack visibility and phone calls
+- Strong performance in visual search (Google Lens)
+- Improved presence in AI Overviews and voice queries
+- Greater independence from third-party delivery platforms
 
 ---
 
-## 5. User Experience & Technical SEO
+## 5. Visual Search & Multimodal Optimization
 
-INP and mobile-first guidance remain valid. Add emphasis on Core Web Vitals stability during core update periods.
-
----
-
-## 6. Post-January 2026 Developments (New)
-
-- **February 2026 Discover Core Update**: Focused on reducing clickbait in Discover feed.
-- **March 2026 Core Update**: One of the most volatile updates on record. Strong emphasis on originality and Information Gain.
-- **May 2026 Core Update**: Continued volatility with further filtering of low-value content.
-- **Information Gain SEO**: Emerged as the dominant defensive strategy for 2026.
+- Use high-resolution, well-lit images (WebP/AVIF preferred)
+- Enable EXIF GPS on business photos when appropriate
+- Write descriptive alt text and filenames that match local intent
+- Upload geo-tagged images to Google Business Profile
 
 ---
 
-## 7. Jan–June 2026 Checklist (Updated)
+## 6. Agentic Commerce Optimization (ACO)
 
-- [ ] UCP manifest live and synced
-- [ ] Every key page contains genuine Information Gain
-- [ ] GBP has 100+ photos + weekly uploads (especially restaurants)
-- [ ] Review velocity system active
-- [ ] Full menu schema + ReserveAction implemented
-- [ ] Schema audit complete (Dataset, Restaurant, FAQPage, Speakable)
+- Structure product data with utility signals (availability, shipping, returns, ratings, sustainability)
+- Maintain a `specs.json` file as the source of truth for product attributes
+- Use honeypot techniques to trap malicious scrapers while allowing legitimate agents
+
+---
+
+## 7. Current Checklist (June 2026)
+
+- [ ] UCP manifest live and inventory-synced
+- [ ] Every major page contains genuine Information Gain
+- [ ] Google Business Profile has 100+ photos + weekly uploads
+- [ ] Review velocity system is active and consistent
+- [ ] Full menu + reservation schema implemented
 - [ ] AI crawlers allowed in robots.txt
-- [ ] No stock images on service pages
+- [ ] No stock photography on key service pages
 
 ---
 
-## Conclusion (June 2026)
+## Final Principle
 
-The January 2026 thesis has been validated and strengthened by subsequent core updates. Success now requires:
+The winners in 2026 are not the best at “SEO” in the traditional sense.  
+They are the best at being **authentically valuable to humans** while being **perfectly readable to machines**.
 
-1. Authentic, high-Information-Gain content
-2. Clean structured data for agents (UCP + schema)
-3. Aggressive local execution (especially GBP photo + review velocity for restaurants)
-
-The restaurant case study above represents the highest-ROI application of the principles in this document for local service businesses.
+Build for both. Add real information. Stay consistent.
 
 ---
 
-*This version incorporates verification from June 2026 research. Original January 2026 content preserved and augmented.*
+*This is the living Second Edition. Update quarterly or after major core updates.*

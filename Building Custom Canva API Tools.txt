@@ -1,0 +1,434 @@
+﻿An Architectural Analysis of the @canva/cli and a Guide to Building Custom MCP Servers for the Canva Connect API
+I. Executive Summary & Canva Developer Ecosystem Demystification
+A. Report Objective and Stated Ambiguity
+This report provides an exhaustive technical analysis of the @canva/cli and delivers a complete architectural guide to building a custom Model Context Protocol (MCP) server designed to wrap the Canva Connect API.
+The developer landscape surrounding Canva contains several similarly named tools and distinct architectural pathways. A preliminary analysis reveals significant ambiguity between the Canva CLI (for the design platform) and various CLIs for unrelated platforms named "Canvas". Furthermore, the user query touches upon two distinct pillars of the Canva ecosystem—the Canva Apps SDK and the Canva Connect API—which serve different purposes.
+This report will first definitively resolve these ambiguities, establishing a clear and accurate foundation. It will then proceed with two distinct technical deep dives, mirroring the bifurcated nature of the query:
+1. An analysis of the @canva/cli and its role in the Canva Apps SDK workflow.
+2. A step-by-step guide to building a custom MCP server, using the Canva Connect API as the target for integration.
+B. Critical Disambiguation: Canva vs. Canvas
+A foundational clarification is required to distinguish the @canva/cli from other similarly named tools for different platforms. Failure to disambiguate these terms leads to significant confusion. The following table identifies the correct tool of focus and discards the irrelevant ones identified during research.
+Table 1: Canva CLI Disambiguation
+CLI Name
+	Source/Package
+	Platform
+	Key Function
+	@canva/cli
+	npm install @canva/cli
+	Canva (Design)
+	The tool in scope. Used for creating and managing Canva Apps.
+	Canvas Data 2 CLI
+	pip install (Python)
+	Canvas LMS (Education)
+	Not in scope. A tool for syncing data from the Canvas Learning Management System (LMS) Data API.
+	Canvas CLI
+	pip install canvas (Python)
+	Canvas Medical (Health)
+	Not in scope. A tool for authenticating to and managing instances of the Canvas Medical (EHR) platform via its FHIR API.
+	pac canvas
+	Microsoft Power Platform CLI
+	Microsoft Power Platform
+	Not in scope. A command group within the Microsoft CLI for managing Power Platform "canvas" applications.
+	This report will focus exclusively on the @canva/cli for the Canva design platform. All references to "Canvas" CLIs are for unrelated systems and will be disregarded.
+C. The Two Pillars of the Canva Ecosystem: Apps SDK vs. Connect API
+The query addresses two different technologies that represent two distinct development pathways. The @canva/cli is the primary tool for one, while the Canva Connect API is the target for the other.
+* The Canva Apps SDK: This SDK is used to build applications that run inside the Canva editor, appearing in the object panel. These apps enhance the user's design experience. They are built with JavaScript/TypeScript and React, running within an iframe. The @canva/cli is the central tool used to create, manage, and preview these in-editor apps.
+* The Canva Connect API: This is a standard REST API for off-platform integrations. It allows external systems (e.g., Digital Asset Management platforms, social media schedulers, custom backends) to programmatically interact with Canva data and services without operating inside the editor. This API is the target that a custom MCP Server will be built to wrap.
+The relationship between these two pathways is summarized below.
+Table 2: Canva Developer Ecosystem Comparison
+Feature
+	Canva Apps SDK
+	Canva Connect API
+	Core Concept
+	In-Editor Enhancement
+	Off-Platform Integration
+	Key Tooling
+	@canva/cli
+	Standard REST Client (e.g., curl, requests[span_8](start_span)[span_8](end_span))
+	Example Use Case
+	Build a Generative AI text-to-image app inside Canva
+	Sync assets from a corporate DAM to a user's Canva library
+	Relevance to this Report
+	Subject of Part II
+	Subject of Parts III & IV
+	D. Analysis of the Bifurcated Query
+The structure of the user's query ("Research... 'Canva CLI' and how to build a... MCP server to use the 'Canva Connect API'") implies a potential link between the @canva/cli and the Canva Connect API.
+The analysis in Table 2 reveals a critical, non-obvious clarification: these two technologies are not directly related in a typical workflow.
+1. The @canva/cli is the tool for the Apps SDK (in-editor apps).
+2. The custom MCP server is a wrapper for the Connect API (off-platform REST API).
+Therefore, the user's request is for two separate, expert-level guides. The report is structured to mirror this bifurcation, addressing each topic authoritatively in its own right.
+The only tool that bridges these two worlds is the official Canva Dev MCP Server (analyzed in Part V). This is an AI assistant tool, bundled with the @canva/cli (it is run via the command npx @canva/cli mcp ), whose purpose is to help developers build integrations that target the Connect API. This nuance confirms the separation of the core technologies while highlighting Canva's sophisticated, multi-faceted developer strategy.
+II. Technical Deep Dive: The @canva/cli
+A. Introduction: The Central Tool for App-SDK Development
+The @canva/cli is the official, unified command-line tool for developers building with the Canva Apps SDK. It is a Node.js-based package that succeeds and replaces the now-deprecated @canva/create-app package.
+While the older package was focused solely on scaffolding, the @canva/cli manages the entire application lifecycle, from scaffolding and authentication to local development and previewing. It is the designated entry point for all in-editor app development on the Canva platform.
+B. Core Functionality & Developer Workflow
+The developer workflow for creating a new in-editor Canva App is managed entirely by the CLI.
+1. Installation: The CLI is a Node.js package installed globally via npm:
+npm install -g @canva/cli@latest
+
+2. Authentication: The first step is to link the CLI to a Canva developer account. This is accomplished with the canva login command. This command opens a browser window, prompting the user to grant the CLI permission to manage their Canva apps.
+3. App Creation (Scaffolding): The primary command is canva apps create, which can be run with an optional app name (e.g., canva apps create "A New App"). This will initiate an interactive process to select an app template and distribution (public or team-only). This process can also be run non-interactively by passing flags, such as --template.
+4. Local Development Lifecycle: Once an app is created, the CLI manages the local development and previewing loop: * cd my-new-app: Navigate into the newly created app directory. * npm start: This command starts a local development server. * Crucially, the @canva/cli automatically communicates with the Canva Developer Portal to provision the new app. It then opens the app's configuration page and a preview URL directly in the developer's browser, enabling a "hot-reload" style development experience.
+   1. Help: The standard --help flag is available for command-specific assistance.
+C. In-Depth Analysis: Application Scaffolding Templates
+The "features" of the @canva/cli are best understood through the application templates it provides. These templates are not just boilerplate; they are best-practice starter kits for specific, high-value use cases, complete with the recommended tooling and SDK integrations.
+Table 3: @canva/cli App Templates
+Template Name (--template flag)
+	Description
+	Key SDKs/Features
+	hello_world
+	The minimal starting point for a Canva App.
+	A basic React/TypeScript structure demonstrating simple UI rendering and fundamental SDK interaction.
+	dam
+	A template for integrating with Digital Asset Management (DAM) applications.
+	Boilerplate for creating an app that allows users to browse and add assets from an external DAM directly into a Canva design.
+	data_connector
+	A template for an app that connects to external data sources.
+	Starter kit for fetching data from an external API or database and using it to populate a design (e.g., for bulk-creating social media posts or business cards).
+	gen_ai
+	A template for creating Generative AI applications.
+	A starter kit for building generative AI apps (e.g., text-to-image, AI-powered effects) that run directly within the Canva editor.
+	The evolution from the older @canva/create-app to the modern @canva/cli signals a significant maturation of Canva's developer platform. The new CLI's focus on a complete development lifecycle (login, create, preview) demonstrates a shift toward a professional, managed developer experience.
+Furthermore, the specific templates provided are a clear indication of Canva's platform strategy. By providing high-quality, pre-built templates for dam, data_connector, and gen_ai, Canva is explicitly directing its developer community to build integrations in three key strategic growth areas: external assets, data-driven design, and generative AI. The CLI is the primary delivery mechanism for this strategy.
+D. Additional CLI Features
+The documentation for the deprecated @canva/create-app package details other utility flags and commands, which are presumed to be integrated into the modern @canva/cli to support the scaffolding process:
+   * --git: Initializes a Git repository in the new project directory.
+   * --installDependencies: Automatically runs npm install after scaffolding is complete.
+   * --lite: Activates a simplified, more accessible version of the CLI.
+   * tip (command): Displays a random development tip for working with the Apps SDK.
+III. The Canva Connect API: An Off-Platform RESTful Hub
+A. Architectural Overview: The Target for our MCP Server
+This section analyzes the Canva Connect API, which is the target that our custom Model Context Protocol (MCP) server will wrap. This API is architecturally distinct from the Apps SDK.
+The Connect API is a set of off-platform REST API endpoints that allow developers to programmatically access Canva functionality outside of the Canva editor. It is designed for server-to-server workflows, such as:
+   * Integrating a Digital Asset Management (DAM) system to upload and sync assets.
+   * Automating design creation.
+   * Embedding Canva functionality into project management workflows.
+   * Managing designs, folders, comments, and exports programmatically.
+A critical developer asset for this API is its public OpenAPI description, available at https...api.yml. The existence of this OpenAPI specification is a significant technical enabler. It confirms that developers are not limited to a specific SDK and can use code generation libraries like openapi-generator to create type-safe client SDKs in any language (e.g., Python, Java, Go, C#). This directly supports the goal of building a custom MCP server, as the Python-based server (Part IV) can use a generated client to handle the underlying HTTP calls to Canva.
+B. Critical Deep-Dive: Authentication (OAuth 2.0 + PKCE)
+A custom MCP server must first handle the Connect API's authentication. This is the single greatest technical challenge. The API does not use simple, static API keys. It employs a robust, user-delegated security model: OAuth 2.0 with the Authorization Code flow and Proof Key for Code Exchange (PKCE).
+The authentication flow is a multi-step, stateful process :
+   1. Obtain User Authorization: The application must redirect the user to Canva's authorization URL (https://www.canva.com/api/oauth/authorize). This request includes a code_challenge (generated for PKCE) and the specific scopes the app requires (e.g., design:content:write).
+   2. Receive Authorization Code: The user logs into Canva and grants permission. Canva then redirects the user back to the application's pre-configured redirect_uri (e.g., http://127.0.0.1:3001/oauth/redirect). This redirect includes a short-lived, one-time-use authorization_code.
+   3. Generate Access Tokens: The application's backend server takes this authorization_code and exchanges it for an access_token and a refresh_token. This POST request to the token endpoint requires the code_verifier (from PKCE) and must itself be authenticated using a Basic Auth header containing a Base64-encoded string of the application's {client_id}:{client_secret}.
+Token Management: The access_token is short-lived. The application must securely store the refresh_token. When the access_token expires, the application must use the refresh_token (which can only be used once) to generate a new access_token and a new refresh_token.
+This complex, user-centric authentication model is fundamentally at odds with the typical design of a simple, stateless MCP server (e.g., a calculator server ). This discrepancy presents the primary hurdle for a custom implementation. Any robust, production-grade MCP server wrapping the Connect API must be a stateful application that includes:
+   * A secure, encrypted database to store refresh_tokens and map them to application users.
+   * Web endpoints to handle the entire OAuth 2.0 redirect flow for new users.
+   * Handler logic within each MCP tool that, before making any API call to Canva, first retrieves the correct refresh_token for the user, generates a fresh access_token , and then performs the desired action.
+This complexity strongly explains why a developer might prefer to use Canva's official Canva AI Connector (analyzed in Part V), which abstracts this entire, difficult process.
+C. Core API "Tools" (Endpoints) for an MCP Server
+The "API tools" mentioned in the query refer to the Connect API's REST endpoints. An MCP server would provide "tools" that wrap these endpoints.
+1. Asset Management :
+   * POST /v1/assets: Creates an asynchronous job to upload an asset from local storage.
+   * POST /v1/assets/url: Creates an asynchronous job to upload an asset from a public URL. This is an ideal target for an MCP tool, as an LLM could find an image URL and pass it to this tool.
+   * GET /v1/assets/url/{job_id}: Gets the status and results of the upload job.
+   * GET /v1/assets/{assetId}: Retrieves metadata for a specific asset.
+2. Design Creation :
+   * POST /v1/designs: The primary endpoint for creating a new design.
+   * Authentication: Requires an Authorization: Bearer {token} header and the design:content:write scope.
+   * Request Body: A JSON payload specifying the design details. For example, to create a new Canva Doc with a title and an existing asset:
+
+{ "design_type": { "type": "preset", "name": "doc" }, "asset_id": "Msd59349ff", "title": "My Holiday Presentation" } ```
+      * The developer documentation provides extensive, multi-language examples for this endpoint (cURL, Node.js, Python, Java, C#, PHP, Ruby, Go) which can be adapted for the MCP handler logic.
+3. Workflow & Collaboration : The API also includes comprehensive endpoints for managing Folders, Exports, and Comments. These are prime candidates for custom, intent-driven MCP tools (e.g., a tool named add_comment_to_design(design_id, comment_text)).
+IV. Building a Custom MCP Server for the Canva Connect API
+A. The Model Context Protocol (MCP) Standard
+Before building the server, it is necessary to define the standard it implements. The Model Context Protocol (MCP) is an open-source standard for connecting AI applications to external systems, data sources, and tools.
+      * Core Analogy: MCP is described as a "USB-C port for AI" or a "Language Server Protocol" for tools. Its purpose is to create a universal interface that replaces fragmented, custom integrations. This allows any MCP-compliant client (an AI application) to connect to any MCP-compliant server (a tool).
+      * Architecture: MCP uses a client-server model.
+      * MCP Clients: AI applications like Claude, ChatGPT, VS Code, or Cursor.
+      * MCP Servers: Applications (which can be built in Python, Node.js, Java, etc. ) that expose capabilities to the AI client.
+      * Capabilities: Servers expose three main types of capabilities:
+      * Resources: File-like data that can be read by clients (e.g., API responses, file contents).
+      * Tools: Functions that can be called by the LLM (e.g., create_design).
+      * Prompts: Pre-written templates to help users accomplish tasks.
+      * Transports: Communication between client and server occurs over a defined transport, such as stdio (for local processes) or http/sse (for remote servers). A custom server wrapping the Connect API would be a remote server, likely using http.
+B. The "API Wrapper" Pattern: Best Practices vs. Anti-Patterns
+The most common and practical pattern for building an MCP server for an existing platform is to wrap its REST API. However, how this is done is the most important architectural decision.
+The Anti-Pattern (Common Misconception): A common mistake is to treat MCP as just another API format, leading to a direct, 1:1 translation of every REST endpoint to an MCP tool. This is "very bad MCP Server design". This anti-pattern overwhelms the AI model with dozens of low-level, implementation-specific tools and fails to bridge the critical gap between non-deterministic AI reasoning and deterministic execution.
+The Expert Pattern (Intent-Driven Tools): An expert-designed MCP server is an intent translation layer, not a simple API mirror. An LLM does not think in terms of POST /v1/assets/url, followed by GET /v1/assets/url/{job_id}, and then polling the status field. The LLM's intent is "I want to upload this image to Canva".
+The correct, robust pattern is to create a single, high-level, intent-driven MCP tool named, for example, upload_image_to_canva(image_url: str, title: str) -> dict.
+The handler for this single tool would, under the hood, perform the entire complex, multi-call workflow:
+      1. Call POST /v1/assets/url with the image_url.
+      2. Receive the job_id from the response.
+      3. Poll GET /v1/assets/url/{job_id} in a loop until the job status is COMPLETE.
+      4. Return a single, simple, machine-readable JSON response, such as {"success": true, "asset_id": "..."}.
+This "stateful wrapper" provides the "deterministic last mile" , ensuring that the AI agent's non-deterministic request is translated into a reliable, deterministic, and successful outcome. The following implementations will adhere to this expert pattern.
+C. Technical Implementation: Python & FastMCP
+This section provides a step-by-step guide to building the server in Python, using uv for package management and FastMCP for the server framework.
+1. Environment Setup :
+# Create project and activate virtual environment
+uv init canva-mcp-server
+uv venv
+source.venv/bin/activate
+# Install dependencies: mcp, cli-support, and an http client
+uv add "mcp[cli]" httpx
+touch server.py
+
+2. Server Code (server.py): The FastMCP framework uses Python type hints and docstrings to automatically generate the MCP tool definitions for the AI client.
+3. Tool Definition (Wrapping POST /v1/designs): This code implements the create_simple_canva_doc tool, adapting the Python requests example to use the httpx client and demonstrating the "intent-driven" pattern.
+import httpx
+import os
+import logging
+from mcp.server.fastmcp import FastMCP
+
+# Initialize FastMCP server
+mcp = FastMCP("canva-connect-server")
+CANVA_API_URL = "https://api.canva.com/rest/v1"
+
+# --- Tool Implementation [span_47](start_span)[span_47](end_span)---
+
+@mcp.tool()
+def create_simple_canva_doc(title: str, asset_id: str) -> dict:
+   """
+   Creates a new, simple Canva Doc design with a title and a single asset.
+   :param title: The title for the new Canva design.
+   :param asset_id: The ID of a previously uploaded asset to include.
+   """
+   try:
+       #!! AUTHENTICATION CHALLENGE!!
+       # This is the "hard part" from Part III.B.
+       # In a real app, this token would be dynamically fetched
+       # for the specific user from a secure token store.
+       # For this demo, it's read from an environment variable.
+       token = os.environ.get("CANVA_ACCESS_TOKEN_FOR_DEMO")
+       if not token:
+           logging.error("Server is missing CANVA_ACCESS_TOKEN_FOR_DEMO")
+           return {"error": "Server is not configured with an auth token."}
+
+       headers = {
+           "Authorization": f"Bearer {token}",
+           "Content-Type": "application/json",
+           "Accept": "application/json"
+       }
+       
+       # Request body from 
+       data = {
+           "design_type": {"type": "preset", "name": "doc"},
+           "asset_id": asset_id,
+           "title": title
+       }
+       
+       # Use httpx client (installed with uv add httpx)
+       with httpx.Client() as client:
+           response = client.post(
+               f[span_48](start_span)[span_48](end_span)"{CANVA_API_URL}/designs",
+               headers=headers,
+               json=data
+           )
+           response.raise_for_status() # Raise exception for 4xx/5xx
+           
+           # Return the new design object
+           return response.json()
+   
+   except httpx.HTTPStatusError as e:
+       logging.error(f"HTTP error: {e}")
+       return {"error": "HTTP error", "details": str(e), "response": e.response.text}
+   except Exception as e:
+       logging.error(f"Unknown error: {e}")
+       return {"error": "Unknown error", "details": str(e)}
+
+def main():
+   # Configure logging to stderr for stdio transport
+   logging.basicConfig(level=logging.INFO, stream=sys.stderr)
+   logging.info("Starting Canva Connect MCP Server...")
+   
+   # Run the server. For local dev, 'stdio' is common.
+   # For a remote server, use 'http' and deploy.
+   mcp.run(transport='stdio')
+
+if __name__ == "__main__":
+   main()
+
+D. Technical Implementation: Node.js / TypeScript
+This section provides a guide for a Node.js-based stack, which is common for web services and supported by the official MCP SDK.
+1. Environment Setup:
+mkdir canva-mcp-server-ts && cd canva-mcp-server-ts
+npm init -y
+# Install MCP SDK, express for transport, and zod for schema
+npm install @modelprotocol/sdk express zod
+# Setup tsconfig.json (details omitted for brevity)
+touch server.ts
+
+2. Server Code (server.ts): This implementation uses the official @modelprotocol/sdk and zod for schema definition. It wraps the POST /v1/assets/url endpoint, demonstrating the asynchronous handler pattern and setting up an Express server for HTTP transport.
+// server.ts
+// Adapting the Quick Start from S42 for the Canva use case
+
+import { McpServer } from '@modelprotocol/sdk/server/mcp.js';
+import { StreamableHTTPServerTransport } from '@modelprotocol/sdk/server/streamableHttp.js';
+import express from 'express';
+import { z } from 'zod';
+
+// 1. Create an MCP server instance
+const server = new McpServer({
+ name: 'canva-connect-server',
+ version: '1.0.0',
+});
+
+// 2. Define the "intent-driven" tool (S73)
+server.registerTool(
+ 'upload_asset_from_url',
+ {
+   title: 'Upload Asset from URL',
+   description: 'Uploads an image or video from a public URL to the user\'s Canva media library. Note: This is an async job.',
+   // Define the input schema using zod [span_148](start_span)[span_148](end_span)
+   inputSchema: {
+     url: z.string().url(),
+     title: z.string().optional(),
+   },
+   // Define the output schema
+   outputSchema: {
+     job_id: z.string(),
+     status: z.string(),
+   },
+ },
+ // 3. Define the handler logic (async function) [span_149](start_span)[span_149](end_span)
+ async ({ url, title }) => {
+   //!! AUTHENTICATION CHALLENGE!!
+   // Again, this token must be dynamically fetched for the correct user.
+   const token = process.env.CANVA_ACCESS_TOKEN_FOR_DEMO;
+   if (!token) {
+     throw new Error('Server is missing CANVA_ACCESS_TOKEN_FOR_DEMO');
+   }
+
+   // Adapting the node-fetch example from S56
+   const response = await fetch("https://api.canva.com/rest/v1/assets/url", {
+     method: "POST",
+     headers: {
+       "Authorization": `Bearer ${token}`,
+       "Content-Type": "application/json",
+     },
+     body: JSON.stringify({
+       "url": url,
+       "name": title |
+
+| 'Untitled Asset'
+     }),
+   });
+
+   if (!response.ok) {
+       throw new Error(`Canva API Error: ${response.statusText}`);
+   }
+
+   const data = await response.json();
+   
+   // 4. Return structured output [span_150](start_span)[span_150](end_span)
+   return {
+     content: [{ type: 'text', text: `Upload job created: ${data.id}` }],
+     structuredContent: {
+       job_id: data.id,
+       status: data.status,
+     },
+   };
+ }
+);
+
+// 5. Set up Express and HTTP transport [span_151](start_span)[span_151](end_span)
+const app = express();
+app.use(express.json());
+
+const httpTransport = new StreamableHTTPServerTransport({
+ server,
+ app,
+ path: '/mcp', // Expose the MCP server on the /mcp endpoint
+});
+
+server.addTransport(httpTransport);
+
+const port = 3001;
+app.listen(port, () => {
+ console.log(`Canva Connect MCP Server listening on http://127.0.0.1:${port}/mcp`);
+});
+
+V. Analysis of Official Canva MCP Servers & Client Configuration
+A. Introduction: "Build vs. Buy" Context
+Before deploying a custom server, it is essential to analyze Canva's official MCP servers. In many cases, a developer may not need to build a custom solution. A deep analysis of the documentation reveals that Canva has implemented a sophisticated, dual-server strategy, using the single MCP standard to target two completely different user personas.
+The documentation explicitly distinguishes them: "Is this the same as the Developer MCP Server? No.".
+      1. The Canva AI Connector is for creative users.
+      2. The Canva Dev MCP Server is for platform developers.
+Understanding these two "buy" options provides the necessary context for the "build" decision.
+B. Server 1: The Canva AI Connector (For Creative Users)
+      * Purpose: To allow AI assistants (like ChatGPT and Claude) to function as creative partners, enabling users to create, search, and manage their Canva designs using natural language.
+      * Hosting Model: This is a Remote server. It is a public-facing, remote MCP server hosted by Canva at https://mcp.canva.com/mcp.
+      * Exposed "API Tools": This server wraps the Connect API to perform creative tasks. The exposed tools include :
+      * generate-design: (e.g., "Create a vibrant Earth Day poster").
+      * search-designs: (e.g., "Find all presentations that mention Q2").
+      * get-design and get-design-content.
+      * export-design and resize-design.
+      * create-folder and comment-on-design.
+      * How to Connect (Claude Code CLI): As a remote HTTP server, it is added by specifying its URL :
+claude mc[span_156](start_span)[span_156](end_span)p add --transport http canva https://mcp.canva.com/mcp
+
+      * How to Connect (Claude Desktop UI): This is the most common, user-friendly method. Users navigate to Settings -> Connectors and select "Canva" from the list to initiate the OAuth flow, completely abstracting the MCP configuration and token management.
+C. Server 2: The Canva Dev MCP Server (For Developers)
+         * Purpose: To provide AI-powered development assistance to developers who are building Canva apps and integrations. This server does not create designs; it helps write code.
+         * Hosting Model: This is a Local server. It is bundled with the @canva/cli and is run on the developer's local machine as a stdio process.
+         * Exposed "API Tools": The tools exposed by this server are for the developer workflow :
+         * "Generate Canva apps" (e.g., scaffolding a new app).
+         * "Generate Canva Connect API client code" (e.g., writing Python or Node.js snippets to call the API).
+         * Answering questions about Canva developer documentation.
+         * How to Connect (Claude Code CLI): As a local server, it is added by specifying the npx command that runs the server :
+claude mcp add canva-dev -- npx -y @canva/cli@latest mcp
+
+         * How to Connect (VS Code / Cursor): This requires manually creating a configuration file in the workspace to tell the editor how to launch the local server. A .vscode/mcp.json or .cursor/mcp.json file is created with the following content :
+{
+ "servers": { 
+   "canva-dev": {
+     "type": "stdio",
+     "command": "npx",
+     "args": [
+       "-y",
+       "@canva/cli@latest",
+       "mcp"
+     ]
+   }
+ }
+}
+(Note: The file name in Cursor is .cursor/mcp.json and the root key is mcpServers).
+D. Summary: Official Server Comparison
+The following table provides a clear comparison of Canva's two official MCP servers.
+Table 4: Official Canva MCP Server Comparison
+Feature
+	Canva AI Connector (Creative)
+	Canva Dev MCP Server (Developer)
+	Target Audience
+	Creative Users, Marketers, General Users
+	App Developers, AI Engineers
+	Key Function
+	Using Canva (Creating/Searching Designs)
+	Building for Canva (Generating Code/Apps)
+	Hosting Model
+	Remote (Hosted by Canva)
+	Local (Run by developer via npx)
+	Example Tool
+	generate-design
+	[span_157](start_span)[span_157](end_span)gen[span_98](start_span)[span_98](end_span)erate-app-scaffold
+	Connection (Claude CLI)
+	claude mc[span_166](start_span)[span_166](end_span)p add... https://mcp.canva.com/mcp
+	claude mcp add... -- npx -y @canva/cli@latest mcp
+	VI. Strategic Recommendations & Conclusion
+A. Decision Framework: Build vs. Buy
+The analysis provides a clear decision-making framework for any developer or organization looking to integrate Canva with AI systems.
+1. Use the Official Canva AI Connecto[span_70](start_span)[span_70](end_span)r (Buy) IF:
+            * Your goal is to empower an AI agent (like Claude) to perform creative tasks (create, search, export designs) on behalf of a standard user.
+            * The publicly available toolset (e.g., generate-design, search-designs) is sufficient for your needs.
+            * You want to avoid the significant development and maintenance overhead of building and hosting a stateful application to manage user-level OAuth 2.0 + PKCE tokens. For most use cases, this is the recommended path.
+2. Use the Official Canva Dev MCP Server (Buy) IF:
+            * Your goal is to use an AI agent as a development assistant or "pair programmer" to help you build a new Canva App or Connect API integration.
+            * This server helps you write code ; it does not execute creative tasks.
+3. Build a Custom MCP Server (Build) IF:
+            * You are a platform (e.g., a Headless CMS, DAM, or social media scheduler) and need to expose your own proprietary logic to an AI agent, which in turn calls the Canva Connect API as part of a larger workflow.
+            * You need to wrap Connect API endpoints not covered by the official AI Connector (e.g., advanced asset metadata updates , complex comment/folder management ).
+            * You have stringent, custom requirements for security, authentication (e.g., mapping your platform's users to Canva users), logging, or orchestration that a public-facing connector cannot meet.
+            * You need to implement the robust "intent-driven" pattern to chain multiple API calls into a single, reliable, "deterministic last mile" tool , as demonstrated in Part IV.
+B. Final Architectural Vision
+This report has demystified and detailed the Canva developer ecosystem as it relates to the user's query. The key components and their relationships are now clear:
+            * The @canva/cli (Part II) is the high-quality, modern tool for building in-editor applications using the Canva Apps SDK. Its features are focused on scaffolding and managing the developer lifecycle for dam, data_connector, and gen_ai apps.
+            * The Canva Connect API (Part III) is the powerful, off-platform RESTful gateway for server-to-server integration. Its primary technical hurdle is its complex, stateful OAuth 2.0 + PKCE authentication model.
+            * A Custom MCP Server (Part IV) is the architectural bridge that makes this powerful-but-complex REST API safely and effectively accessible to modern AI agents. The correct implementation of this bridge follows an "intent-driven" pattern, not a 1:1 API wrapper.
+            * Finally, Canva's Official MCP Servers (Part V) provide two distinct, out-of-the-box "buy" options: one for creative users (Canva AI Connector) and one for developers (Canva Dev MCP [span_33](start_span)[span_33](end_span)[span_38](start_span)[span_38](end_span)Server).
+While these official servers provide excellent solutions for the majority of use cases, the "build" path remains critical for deep, proprietary, and platform-level integrations that require custom logic, security, and orchestration. The choice depends entirely on whether the developer's strategic goal is to use Canva, build on Canva, or integrate with Canva at a fundamental, server-to-server level.
+Works cited
+1. Build The Tools Behind Great Design | Canva Developers, https://www.canva.com/developers/ 2. Canva Apps SDK, https://www.canva.dev/ 3. Quickstart - Canva Apps SDK Documentation, https://www.canva.dev/docs/apps/quickstart/ 4. Canva CLI - Canva Apps SDK Documentation, https://www.canva.dev/docs/apps/canva-cli/ 5. Canva Connect APIs Documentation, https://www.canva.dev/docs/connect/ 6. Dev MCP server - Canva Connect APIs Documentation, https://www.canva.dev/docs/connect/mcp-server/ 7. Introducing the Canva Dev MCP Server - Canva Developers Blog, https://www.canva.dev/blog/developers/canva-dev-mcp-server/ 8. @canva/create-app - npm, https://www.npmjs.com/package/@canva/create-app 9. Canva Connect API | Documentation | Postman API Network, https://www.postman.com/canva-developers/canva-developers/documentation/oi7dfns/canva-connect-api?entity=request-33438385-9790971e-24eb-4706-9841-d5dac8884e4c 10. Smarter design, connected content: Canva's biggest API update yet, https://www.canva.com/newsroom/news/new-apis-data-connectors/ 11. Quickstart - Canva Connect APIs Documentation, https://www.canva.dev/docs/connect/quickstart/ 12. Authentication - Canva Connect APIs Documentation, https://www.canva.dev/docs/connect/authentication/ 13. Canva API: A Comprehensive Guide | Zuplo Learning Center, https://zuplo.com/learning-center/canva-api 14. Canva Connect API | Get Started - Postman, https://www.postman.com/canva-developers/canva-developers/collection/oi7dfns/canva-connect-api 15. MCP server: A step-by-step guide to building from scratch - Composio, https://composio.dev/blog/mcp-server-step-by-step-guide-to-building-from-scrtch 16. Connect AI assistants to Canva with the AI Connector - Canva Help Center, https://www.canva.com/help/mcp-agent-setup/ 17. Assets - Canva Connect APIs Documentation, https://www.canva.dev/docs/connect/api-reference/assets/ 18. Create design - Designs - Canva Connect APIs Documentation, https://www.canva.dev/docs/connect/api-reference/designs/create-design/ 19. Model Context Protocol, https://modelcontextprotocol.io/ 20. Model Context Protocol - GitHub, https://github.com/modelcontextprotocol 21. Specification - Model Context Protocol, https://modelcontextprotocol.io/specification/2025-06-18 22. Introducing the Model Context Protocol - Anthropic, https://www.anthropic.com/news/model-context-protocol 23. Use MCP servers in VS Code, https://code.visualstudio.com/docs/copilot/customization/mcp-servers 24. Model Context Protocol - Wikipedia, https://en.wikipedia.org/wiki/Model_Context_Protocol 25. Build an MCP server - Model Context Protocol, https://modelcontextprotocol.io/docs/develop/build-server 26. The official Python SDK for Model Context Protocol servers and clients - GitHub, https://github.com/modelcontextprotocol/python-sdk 27. From REST API to MCP Server - Stainless, https://www.stainless.com/mcp/from-rest-api-to-mcp-server 28. How to expose your internal REST API to your MCP server - OpenReplay Blog, https://blog.openreplay.com/expose-internal-api-mcp/ 29. Integrating Model Context Protocol (MCP) into Existing APIs | by Karthik Kalahasthi | Medium, https://medium.com/@droidnext/integrating-model-context-protocol-mcp-into-existing-apis-c737d6587d12 30. Model Context Protocol (MCP): 3 Misconceptions and Fixes - Docker, https://www.docker.com/blog/mcp-misconceptions-tools-agents-not-api/ 31. MCP Link - Convert Any HTTP API to MCP Server - Reddit, https://www.reddit.com/r/mcp/comments/1jnvzc9/mcp_link_convert_any_http_api_to_mcp_server/ 32. turning any API into a production ready MCP server in a click - Reddit, https://www.reddit.com/r/mcp/comments/1lr2fqs/turning_any_api_into_a_production_ready_mcp/ 33. Is Your MCP Server Just Another API Wrapper? Understanding Effective MCP Tool Design | by Ankit Rana | Medium, https://medium.com/@ankit-rana/is-your-mcp-server-just-another-api-wrapper-understanding-effective-mcp-tool-design-92cea4b6f940 34. Should you wrap MCP around your existing API? - Scalekit, https://www.scalekit.com/blog/wrap-mcp-around-existing-api 35. Let's write a Simple MCP Server - Shiv Deepak, https://shivdeepak.com/posts/lets-write-a-simple-mcp-server/ 36. The official TypeScript SDK for Model Context Protocol servers and clients - GitHub, https://github.com/modelcontextprotocol/typescript-sdk 37. Bringing design creation to AI workflows: Create with Canva inside ChatGPT, https://www.canva.com/newsroom/news/deep-research-integration-mcp-server/ 38. Actions you can take in AI assistants connected to Canva MCP, https://www.canva.com/help/mcp-canva-usage/ 39. Connect Claude Code to tools via MCP, https://code.claude.com/docs/en/mcp 40. Canva MCP - Jan.ai, https://www.jan.ai/docs/desktop/mcp-examples/design/canva 41. How to use Canva in Claude AI - Reddit, https://www.reddit.com/r/canva/comments/1m692vn/how_to_use_canva_in_claude_ai/ 42. Unlocking Canva with AI: A Deep Dive into the Official Dev MCP Server - Skywork.ai, https://skywork.ai/skypage/en/canva-ai-dev-server/1979079713114857472 43. Dev MCP server - Canva Apps SDK Documentation, https://www.canva.dev/docs/apps/mcp-server/

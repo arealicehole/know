@@ -1,0 +1,276 @@
+﻿An Analysis of Multi-Agent Orchestration: A Comparative Study of Kilo Code and the Claude Agent Ecosystem
+
+
+
+
+I. Introduction: Defining the Arena—Integrated Agent vs. Agentic Framework
+
+
+An analysis of the setup and orchestration capabilities of "Kilo Code" versus "Claude Code" requires first deconstructing the query itself. The comparison is not between two equivalent products but between two fundamentally different classes of tools: a high-level, integrated AI agent (Kilo Code) and a foundational, low-level agentic framework (the Claude Agent SDK). This distinction, a "category error" in common technical discourse, is the central clarifying principle of this report.
+Defining Kilo Code:
+Kilo Code is a high-level, open-source AI coding agent designed as an extension for IDEs like VS Code and JetBrains.1 It is a superset and direct fork of "Roo Code" that also integrates features from another tool, "Cline," to create a unified, "best of both worlds" solution.1 Its philosophy is "batteries-included," offering a comprehensive, feature-rich experience out-of-the-box, including built-in access to models like Claude 4 and Gemini 2.5 Pro, automated task handling, and an agent marketplace.1
+Defining the "Claude Code" Ecosystem:
+"Claude Code" is not a single, monolithic product but an evolving ecosystem.
+* Legacy: The "Claude Code" CLI Tool: The original "Claude Code" was an agentic command-line tool for developers.8 Its design was intentionally "low-level and unopinionated," providing flexible, raw access to the model's capabilities within a terminal.9
+* Present: The "Claude Agent SDK": The underlying technology that powered the CLI tool proved highly effective for a wide range of non-coding tasks, such as deep research and note-taking.8 Recognizing this, Anthropic renamed the "Claude Code SDK" to the "Claude Agent SDK".8 This SDK, available in Python and TypeScript, is a foundational library for developers to build their own custom agents.8
+Therefore, this report will compare Kilo Code not only against the modern SDK but also against the original orchestration patterns that emerged around the legacy "Claude Code" CLI tool, as this directly addresses the implicit assumptions in the comparison.12
+The Core Philosophical Divergence: Product vs. Platform
+This analysis pivots on a central philosophical divide:
+* Kilo Code (The Product): This system provides a pre-built, opinionated orchestration solution. Its "Orchestrator mode" is a feature to be used.2 The "setup" process involves configuring this pre-existing product.
+* Claude Agent SDK (The Platform): This system provides the primitives for building a custom orchestration solution.8 The "setup" process is a software development lifecycle: writing code, defining tools, and architecting stateful agent loops.8
+This tension—between an integrated experience and composable power—is the defining characteristic of the modern agentic AI landscape. Kilo Code represents the "integrated dev team" within the IDE, while the Claude Agent SDK is the "foundry" for building autonomous agents that can run anywhere. This report will use this tension as its central analytical lens.
+
+
+II. Comparative Analysis: Initial Setup and Environment Configuration
+
+
+The "setup" process for each system is not a mere preliminary step; it is a direct reflection of their core philosophy. Kilo Code's setup is non-programmatic and context-driven, while the Claude Agent SDK's setup is an act of programming.
+
+
+Kilo Code: The "Batteries-Included" IDE Experience
+
+
+The setup for Kilo Code is designed for rapid adoption and immediate utility, focusing entirely on user experience and project context.
+* Installation: The process is that of a standard IDE extension.17
+   * The primary method is installing "Kilo Code" from the VS Code Marketplace or the JetBrains Marketplace.2
+   * For VS Code-compatible editors like VSCodium or Theia, it can be installed from the Open VSX Registry.17
+   * A manual installation from a .vsix file, downloadable from GitHub Releases, is also supported.17
+* Model Access & Configuration: This is a key differentiator.
+   * Kilo Code provides seamless out-of-the-box access to frontier models, including Claude 4, Gemini 2.5, and GPT-4.1.1
+   * No manual API key setup is required for these integrated models; users simply log in with a Google account.1
+   * New users receive free credits (e.g., $20 worth) to begin work immediately.1
+   * For customization, the system also supports a "Bring Your Own API Key" (BYOK) model and can connect to local models.2
+* Project-Level Context & Rule Setup: This is the primary "setup" a user performs to guide the pre-built agent.
+   * AGENTS.md: Kilo Code supports the AGENTS.md standard.19 This file functions as a "README for agents," providing a dedicated, predictable location for project-specific context like build steps, test commands, and code style conventions. This keeps the human-facing README.md file clean and concise.19
+   * .kilocode/rules/: For more granular, persistent instructions, users can create "custom rules" in Markdown files within this directory.17 These rules act as guardrails and conventions that all AI models will follow, such as "Explain your reasoning before providing code" or "Prioritize using the most common library in the community".17
+
+
+The "Claude Code" Ecosystem: The Developer-First Library
+
+
+The setup for the Claude ecosystem is bifurcated, reflecting its evolution from a simple CLI tool to a robust development kit.
+
+
+A. Setup for "Classic" Manual Orchestration (Legacy CLI Tool)
+
+
+This pattern involves using the original claude-code CLI tool.
+* Installation: Involves installing the command-line tool, typically via Node.js's package manager: npm i -g @anthropic-ai/claude-code.10
+* Configuration: The user must log in to their Anthropic account from the terminal to authenticate the client.21
+* Project-Level Context Setup: This is accomplished via a CLAUDE.md file. When a conversation is started, the claude tool automatically pulls this file into context, providing the model with repository-specific guidelines, common commands, and testing instructions.9
+While the tool setup is simple, the orchestration setup, as detailed in the next section, is entirely manual and procedurally complex.
+
+
+B. Setup for Modern SDK-Driven Orchestration (Claude Agent SDK)
+
+
+This is a standard software library setup, functionally equivalent to setting up any new programming dependency.
+* Installation (Prerequisites): This is a programmatic setup.
+   * It requires a compatible environment, such as Python 3.13+ or Node.js.10
+   * The SDK is installed via a package manager: pip install claude-agent-sdk for Python or the equivalent npm install for the TypeScript SDK.10
+* Environment & Configuration:
+   * Best practices require setting up a virtual environment (e.g., using uv sync).20
+   * Manual API key management is required. The developer must create a .env file and store their ANTHROPIC_API_KEY.20
+   * The setup may also involve configuring local .claude/settings.json files to manage system-specific file paths.20
+* Project-Level Context Setup: This is a coding task. The "setup" involves writing Python or TypeScript code to:
+   * Define custom tools using decorators (e.g., @tool) that the agent can use.20
+   * Create a Model Context Protocol (MCP) server to host these tools, if necessary.20
+   * Instantiate and configure the ClaudeSDKClient to use these tools and manage sessions.10
+In short, the setup process for Kilo Code involves configuring a product, whereas the setup for the Claude Agent SDK involves initiating a software project.
+
+
+III. Deep Dive: Multi-Agent Orchestration Architectures and Workflows
+
+
+The most significant differences lie in how each system conceptualizes and executes multi-agent orchestration. Kilo Code presents an opinionated, built-in feature, while the Claude ecosystem provides unopinionated, pattern-based primitives that require the developer to build the orchestration logic.
+
+
+Kilo Code: The Opinionated, Mode-Based Orchestration
+
+
+Kilo Code's orchestration is hierarchical, stateful, and fully integrated. It is not a system the user builds, but a powerful feature the user activates.
+* Architecture and Core Mechanism: The system is managed by the built-in Orchestrator mode.2 This mode is a productized implementation of a hierarchical task-decomposition pattern.
+* Setup: To "set up" this orchestration, a developer does not write code. They simply select the Orchestrator mode from the Kilo Code UI and provide a complex prompt.2
+* Workflow: The execution flow is as follows:
+   1. The user provides a complex, high-level task (e.g., "build a full-stack authentication system").14
+   2. The Orchestrator mode analyzes the task and breaks it down into a multi-step plan of subtasks.2
+   3. It then delegates these subtasks to other specialized agent modes.2
+   4. The parent Orchestrator task pauses, maintaining its state.14
+   5. The subtask (e.g., in Code mode) executes in an isolated context.14
+   6. Upon completion, the subtask signals completion and provides a summary of its work back to the parent.14
+   7. The Orchestrator task resumes, integrates the summary, and proceeds to the next step in its plan.14
+* The "Agents" Being Orchestrated: Specialized Modes: The Orchestrator does not manage abstract "agents" but rather Kilo Code's other built-in modes, treating them as specialized workers:
+   * Architect Mode: For high-level planning, outlining project structure, and suggesting libraries.4
+   * Code Mode: For writing the production-ready implementation based on the Architect's plan.4
+   * Debug Mode: For identifying and fixing bugs in the generated code.4
+   * Ask Mode: For codebase navigation, explanation, and context gathering.6
+* Concurrency and Extensibility: Kilo Code explicitly supports running Parallel agents, allowing it to tackle multiple subtasks simultaneously to accelerate complex projects.2 The capabilities of these agent "modes" can be extended by adding new tools from the MCP Server Marketplace.1
+In this paradigm, the developer's role shifts from engineer to project manager. Their "setup" is a workflow management task: reviewing the Orchestrator's plan, approving subtask creation, and verifying completion.14
+
+
+The "Claude Code" Ecosystem: Unopinionated, Pattern-Based Orchestration
+
+
+The Claude ecosystem has no built-in "Orchestrator mode." The user must create the orchestration themselves. Two distinct patterns for this have emerged.
+
+
+Pattern 1: "Classic" Manual Orchestration (The "Multi-Terminal" Method)
+
+
+This ad-hoc, community-driven pattern emerged to overcome the limitations of a single claude-code CLI instance.13 It serves as the conceptual blueprint for what tools like Kilo Code later automated.
+* Architecture: A manual, Human-in-the-Loop (HITL) system composed of multiple, independent claude CLI instances, each with a distinct, persistent role.
+* Setup: Role Definition:
+   1. The developer creates a multi-agent-template.md file.12
+   2. This file defines the agent roles (e.g., "Agent 1 - The Architect," "Agent 2 - The Builder," "Agent 3 - The Validator," "Agent 4 - The Scribe").12
+   3. This template is saved to Claude's user memory directories (/memory/ and /usermemory/) so the roles are persistent.13
+* Setup: Orchestration & State Management:
+   1. The developer opens multiple terminal tabs (e.g., four tabs in VS Code), one for each agent.12
+   2. In each terminal, they cd to the project and launch claude, manually assigning its role with a prompt: claude > You are Agent 1 - The Architect.12
+   3. A shared MULTI_AGENT_PLAN.md file is created. This file acts as the shared state, message bus, and task list for all agents.12
+* Execution: The "Architect" agent writes the plan to the .md file. The "Builder" agent is then manually prompted to read the file, execute its task, and update the file. The human user is the orchestrator, copying information between terminals and ensuring agents check the shared plan. Git branches (e.g., agent1/planning, agent2/implementation) are used to prevent file conflicts.12
+This "setup" is the orchestration. It is a procedural, high-friction, but highly explicit system that perfectly illustrates the foundational need for automated multi-agent collaboration.
+
+
+Pattern 2: Modern SDK-Driven Orchestration (The "Developer" Method)
+
+
+This pattern uses the Claude Agent SDK as a library to build a custom, automated orchestration system in code.
+* Architecture: Based on the paradigm of "Giving Claude a computer".8 The architecture is not predefined; it is coded by the developer. The SDK provides the primitives for an agent to perceive and act.
+* Setup: Defining Agent Capabilities (Tools): Orchestration is achieved by giving agents tools. The setup is the process of writing these tools, which allow the agent to interact with its environment (e.g., bash, edit files, create files).8 By "unhobbling" the model with terminal access, the developer allows it to orchestrate its own workflow by running scripts, writing files, and iterating on its work.8
+* Setup: Building the Orchestration Logic: The developer must programmatically define the agent's core loop: gather context -> take action (use tool) -> verify work -> repeat.8
+   * For multi-agent systems, this means coding the orchestration logic, often following an "orchestrator-worker" pattern.27
+   * The developer defines a "Lead" or "Director" agent responsible for planning, delegation, and state management.16
+   * This "Lead" agent then uses its tools to create and delegate tasks to specialized subagents, which can be run in parallel.16
+With the SDK, "setting up multi-agent orchestration" is synonymous with software engineering. It requires significant development effort but offers infinite flexibility and is not tied to an IDE.29
+
+
+Contextualizing the Claude SDK: The Role of External Frameworks
+
+
+Because the Claude Agent SDK is a low-level library, a dominant "setup" pattern for production-grade orchestration involves using it within a higher-level framework like CrewAI or LangGraph.
+* CrewAI: This framework is built on a "roles over rules" philosophy, which directly productizes the "multi-terminal" manual pattern.30
+   * Setup: The developer defines Agents (with role, goal, backstory) and Tasks in Python. A Crew object is then instantiated to manage the agents and execute the tasks in a defined process (e.g., Sequential or Hierarchical).31
+   * Claude Integration: The Claude model (e.g., claude-3-5-sonnet) is simply passed as the llm parameter when defining the agent.34
+* LangGraph: This framework provides low-level control for building stateful, cyclical agent workflows using graph-based state machines.38
+   * Setup: The developer defines a StateGraph. They then add Nodes (Python functions representing an agent or tool) and Edges (which define the conditional logic and flow between nodes).39
+   * Claude Integration: The Claude model (e.g., claude-sonnet-4-5) is instantiated and used within a node to make decisions, process data, or call tools.40
+For many developers, the most practical path to robust multi-agent orchestration using Claude models is to set up one of these frameworks, which handle the complex state management and agentic loops, and simply use the Claude API as the "engine."
+
+
+IV. Synthesis and Strategic Recommendations
+
+
+The choice between Kilo Code and the Claude agent ecosystem is a strategic one, contingent entirely on the user's objective, technical resources, and desired outcome. The "setup" process for each reflects these divergent goals.
+
+
+Table 1: Comparative Analysis of Orchestration Paradigms
+
+
+
+
+Dimension
+	Kilo Code
+	"Classic" Claude Code (Manual)
+	"Modern" Claude Agent SDK (Direct)
+	Primary Form Factor
+	Integrated IDE Extension (VS Code, JetBrains) 1
+	Command-Line Interface (CLI) Tool 9
+	Programming Library (Python, TypeScript) 10
+	Setup Process
+	Low-Friction: Install extension, get free credits, non-programmatic context (AGENTS.md) 1
+	Manual & Procedural: Install CLI, open and manage multiple terminals, manually edit shared files 12
+	High-Friction: pip install, manage API keys, set up env, write boot-strapping code 10
+	Orchestration Philosophy
+	Opinionated & Built-in 2
+	Ad-hoc & Emergent 13
+	Unopinionated & Developer-Defined 15
+	Core Mechanism
+	Orchestrator mode (automated hierarchical task decomposition) 14
+	Human-in-the-Loop (HITL) coordination via shared MULTI_AGENT_PLAN.md file 12
+	Code-defined agent loops, state machines, and tool-use (bash, custom functions) 8
+	Agent Definition
+	Predefined Modes (Architect, Code, Debug) 4
+	Manual role assignment via prompt injection (/usermemory/) 13
+	Custom agents defined as Python/TS objects or functions 22
+	State Management
+	Built-in & Automated: Parent task pauses, subtask resumes, context is summarized 14
+	Manual & File-Based: Human must track state by editing the .md plan file 12
+	Developer's Responsibility: Must be coded (e.g., in-memory objects, databases) 39
+	Extensibility
+	MCP Server Marketplace (plug-and-play tools) 1
+	N/A (Manual process)
+	Define new tools (@tool) or MCP servers in code 20
+	
+
+Use-Case Suitability and Recommendations
+
+
+
+
+When to Choose Kilo Code
+
+
+* Ideal User: Individual developers, small teams, and "solopreneurs" who want to leverage powerful, pre-built multi-agent workflows directly within their IDE.2
+* Core Use Case: Accelerating in-IDE development. Automating complex but well-defined coding tasks (e.g., "scaffold a new React component with state management," "implement this feature from the Architect's plan," "find and fix this bug") without leaving the editor.4
+* Strategic Choice: Choose Kilo Code if the goal is to augment developer productivity with an "AI dev team" co-pilot. The setup is fast, and the value is immediate. It is the "product" choice.
+
+
+When to Choose the "Claude Code" Ecosystem (SDK & Frameworks)
+
+
+* Ideal User: AI engineers, backend development teams, and enterprises building autonomous systems or bespoke agentic applications.15
+* Core Use Case: Building production-grade, non-IDE-dependent agents. Examples include autonomous research agents that can plan and execute web searches 28, automated CI/CD pipeline agents that can fix their own errors 22, email-sorting agents that can use tools to fetch data 8, or complex systems integrated with internal databases and APIs.30
+* Strategic Choice: Choose the Claude Agent SDK (most likely wrapped by a framework like LangGraph or CrewAI) if the goal is to build a new agentic application as a standalone product or service. The setup is complex because the "setup" is the act of building the application itself. It is the "platform" choice.
+
+
+V. Concluding Analysis: The Diverging Paths of Developer-Agent Collaboration
+
+
+This analysis began by deconstructing the "category error" in comparing Kilo Code and "Claude Code." It concludes that this "error" is, in fact, the most salient and strategic question for a technical leader in the current AI landscape. The two entities represent divergent evolutionary paths for developer-agent collaboration.
+Kilo Code represents the integration path. It perfects the "human-in-the-loop" model by embedding a sophisticated, pre-built multi-agent team—complete with an Orchestrator, Architect, and Coder—directly into the developer's primary tool, the IDE.1 The setup is minimal, designed for rapid adoption and immediate productivity gains. It is the logical evolution of the "co-pilot" into a full "crew."
+The Claude Agent SDK represents the composition path.15 It provides the "foundry" or the "engine" that enables developers to "give Claude a computer" and build entirely new classes of autonomous applications.8 The "setup" for its orchestration is a new form of programming—defining state, tools, and logical flows for AI agents, often within higher-level state-machine frameworks like LangGraph 39 or role-based frameworks like CrewAI.31
+The choice is not between two competing "coding assistants." It is a fundamental choice between an integrated productivity-multiplying tool (Kilo Code) and a foundational library for building autonomous systems (Claude Agent SDK). The correct decision hinges entirely on whether the user's objective is to write code faster or to build systems that write their own.
+Works cited
+1. Kilo Code - Kilo Code is an open-source VS Code AI agent tool that combines the best … - Jimmy Song, accessed November 7, 2025, https://jimmysong.io/en/ai/kilocode/
+2. Kilo Code - The best AI coding agent for VS Code and JetBrains, accessed November 7, 2025, https://kilocode.ai/
+3. accessed November 7, 2025, https://skywork.ai/skypage/en/Kilo%20Code%3A%20The%20Ultimate%20Open-Source%20AI%20Coding%20Agent%3F%20A%20Deep%20Dive%20Review/1974366543654481920#:~:text=A%3A%20Kilo%20Code%20is%20an,more%20cohesive%20and%20powerful%20tool.%20.
+4. Kilo Code, The AI Coding Genius That Outshines Cline & Roo Combined! - Apidog, accessed November 7, 2025, https://apidog.com/blog/kilo-code/
+5. Kilocode vs Cline vs Claude Code: Best AI Coding Assistant? - Arsturn, accessed November 7, 2025, https://www.arsturn.com/blog/kilocode-vs-cline-vs-claude-code-choosing-your-ai-coding-sidekick
+6. Writing Code Smarter & Faster with Kilo Code: Your Always‑On IDE AI Partner, accessed November 7, 2025, https://www.oneclickitsolution.com/centerofexcellence/aiml/smart-faster-coding-with-kilo-code
+7. Kilo Code + GPT-5 with Requesty: Ultra-Lightweight AI Coding Agent, accessed November 7, 2025, https://www.requesty.ai/blog/kilo-code-gpt-5-with-requesty-ultra-lightweight-ai-coding-agent
+8. Building agents with the Claude Agent SDK - Anthropic, accessed November 7, 2025, https://www.anthropic.com/engineering/building-agents-with-the-claude-agent-sdk
+9. Claude Code: Best practices for agentic coding - Anthropic, accessed November 7, 2025, https://www.anthropic.com/engineering/claude-code-best-practices
+10. Claude Agent SDK Tutorial: Create Agents Using Claude Sonnet 4.5 | DataCamp, accessed November 7, 2025, https://www.datacamp.com/tutorial/how-to-use-claude-agent-sdk
+11. Agent SDK overview - Claude Docs, accessed November 7, 2025, https://docs.claude.com/en/api/agent-sdk/overview
+12. Getting Started with the Claude Code SDK to Orchestrate Multiple AI Instances - Arsturn, accessed November 7, 2025, https://www.arsturn.com/blog/getting-started-with-the-claude-code-sdk-to-orchestrate-multiple-ai-instances
+13. How I Built a Multi-Agent Orchestration System with Claude Code Complete Guide (from a nontechnical person don't mind me) - Reddit, accessed November 7, 2025, https://www.reddit.com/r/ClaudeAI/comments/1l11fo2/how_i_built_a_multiagent_orchestration_system/
+14. Orchestrator Mode: Coordinate Complex Workflows | Kilo Code Docs, accessed November 7, 2025, https://kilocode.ai/docs/basic-usage/orchestrator-mode
+15. Building Effective AI Agents - Anthropic, accessed November 7, 2025, https://www.anthropic.com/research/building-effective-agents
+16. Mastering Claude Agent SDK: Best Practices for Developing AI Agents (2025) - Skywork.ai, accessed November 7, 2025, https://skywork.ai/blog/claude-agent-sdk-best-practices-ai-agents-2025/
+17. Custom Rules | Kilo Code Docs, accessed November 7, 2025, https://kilocode.ai/docs/advanced-usage/custom-rules
+18. Compare Kilo Code vs. Kiro in 2025 - Slashdot, accessed November 7, 2025, https://slashdot.org/software/comparison/Kilo-Code-vs-Kiro/
+19. AGENTS.md, accessed November 7, 2025, https://agents.md/
+20. kenneth-liao/claude-agent-sdk-intro - GitHub, accessed November 7, 2025, https://github.com/kenneth-liao/claude-agent-sdk-intro
+21. Quickstart - Claude Docs, accessed November 7, 2025, https://docs.claude.com/en/docs/claude-code/quickstart
+22. Claude Agent SDK: Build AI Agents That Actually Get Work Done : r/aiagents - Reddit, accessed November 7, 2025, https://www.reddit.com/r/aiagents/comments/1nuh1kq/claude_agent_sdk_build_ai_agents_that_actually/
+23. Kilo Code Orchestrator Mode Guide: INSANE AI Coding Automation - YouTube, accessed November 7, 2025, https://www.youtube.com/watch?v=T9PnGcLromA
+24. Claude Code Agentrooms - Multi-Agent Development Workspace | AI Code Orchestration, accessed November 7, 2025, https://claudecode.run/
+25. Building the future of agents with Claude, accessed November 7, 2025, https://www.youtube.com/watch?v=XuvKFsktX0Q
+26. Claude Agents SDK BEATS all Agent Framework! (Beginners Guide) - YouTube, accessed November 7, 2025, https://www.youtube.com/watch?v=i6N8oQQ0tUE
+27. Building Multi-Agent Deep Research System with Swarms Framework, accessed November 7, 2025, https://medium.com/@kyeg/building-multi-agent-deep-research-system-with-swarms-framework-2df99b7fabd6
+28. How we built our multi-agent research system - Anthropic, accessed November 7, 2025, https://www.anthropic.com/engineering/multi-agent-research-system
+29. Rapidly Prototype and Evaluate Agents with Claude Agent SDK and MLflow, accessed November 7, 2025, https://mlflow.org/blog/mlflow-autolog-claude-agents-sdk
+30. LangChain vs CrewAI vs Autogen: A Practical Guide to Choosing an AI Agent Framework, accessed November 7, 2025, https://medium.com/@data.ai.oliver/langchain-vs-crewai-vs-autogen-a-practical-guide-to-choosing-an-ai-agent-framework-a2d5de59b6c4
+31. Introduction - CrewAI Documentation, accessed November 7, 2025, https://docs.crewai.com/en/introduction
+32. Building a multi agent system using CrewAI | by Vishnu Sivan | The Pythoneers | Medium, accessed November 7, 2025, https://medium.com/pythoneers/building-a-multi-agent-system-using-crewai-a7305450253e
+33. CrewAI + Claude 3 Haiku - YouTube, accessed November 7, 2025, https://www.youtube.com/watch?v=K0mb-pXdqsI
+34. LLMs - CrewAI Documentation, accessed November 7, 2025, https://docs.crewai.com/en/concepts/llms
+35. Build Your First Crew - CrewAI Documentation, accessed November 7, 2025, https://docs.crewai.com/en/guides/crews/first-crew
+36. Connect to any LLM - CrewAI Documentation, accessed November 7, 2025, https://docs.crewai.com/en/learn/llm-connections
+37. Coding Agents - CrewAI Documentation, accessed November 7, 2025, https://docs.crewai.com/en/learn/coding-agents
+38. Comparing Agentic AI Frameworks: A Comprehensive Analysis for 2025 - Claude, accessed November 7, 2025, https://claude.ai/public/artifacts/e7c1cf72-338c-4b70-bab2-fff4bf0ac553
+39. Build multi-agent systems with LangGraph and Amazon Bedrock | Artificial Intelligence, accessed November 7, 2025, https://aws.amazon.com/blogs/machine-learning/build-multi-agent-systems-with-langgraph-and-amazon-bedrock/
+40. Quickstart - Docs by LangChain, accessed November 7, 2025, https://docs.langchain.com/oss/python/langgraph/quickstart
+41. ChatAnthropic - Docs by LangChain, accessed November 7, 2025, https://docs.langchain.com/oss/python/integrations/chat/anthropic
+42. Research Assistant with LangGraph and Claude 3.5 Sonnet on Snowflake - Medium, accessed November 7, 2025, https://medium.com/snowflake/research-assistant-with-langgraph-and-claude-3-5-sonnet-on-snowflake-4eb294aea81a
+43. Building out a "Team" of Claude's -- is this possible? : r/ClaudeAI - Reddit, accessed November 7, 2025, https://www.reddit.com/r/ClaudeAI/comments/1lh6o3o/building_out_a_team_of_claudes_is_this_possible/

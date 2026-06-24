@@ -1,0 +1,290 @@
+﻿A Comprehensive Technical Analysis of Temporal Alignment Architectures in AssemblyAI Speech Recognition Pipelines
+1. Introduction: The Temporal Imperative in Automated Speech Recognition
+In the contemporary landscape of computational linguistics and software engineering, Automated Speech Recognition (ASR) has evolved from a simple mechanism of converting audio to text into a complex system for extracting structured intelligence from unstructured media. While the accuracy of the transcription—the textual fidelity to the spoken word—remains paramount, the utility of that text is fundamentally tethered to its temporal placement. Without precise alignment between the acoustic signal and the linguistic output, a transcript is merely a static document, divorced from the dynamic reality of the audio source. For developers, data scientists, and solutions architects, the challenge lies not just in obtaining the words, but in obtaining the time at which those words occurred.
+The integration of timestamps is the critical bridge that enables modern multimedia applications. It is the mechanism that powers closed captioning for accessibility, facilitates deep search within video archives, enables "karaoke-style" playback synchronization, and allows for the granular editing of audio based on text manipulation. This report provides an exhaustive technical analysis of the timestamping architectures provided by AssemblyAI, offering a deep dive into the extraction, manipulation, and application of temporal data across its various models and API endpoints.
+We will explore the hierarchy of temporal data, ranging from the atomic precision of word-level timestamps to the semantic aggregation of sentences and paragraphs, the identity-based segmentation of speaker diarization, and the high-level thematic abstraction of automated chapters. Through a rigorous examination of the Python and Node.js Software Development Kits (SDKs), alongside direct API interactions, this document serves as a definitive reference for implementing robust, time-aware ASR solutions.
+1.1 The Millisecond Standard and Temporal Precision
+At the foundation of AssemblyAI’s temporal architecture is the standardization of time measurement. Across all endpoints, models, and SDKs, the fundamental unit of temporal currency is the millisecond. This integer-based representation eliminates the ambiguity often associated with frame-based timecodes (e.g., SMPTE standards) or floating-point seconds, which can introduce rounding errors in complex arithmetic operations. When the AssemblyAI API returns a start value of 1500, it unequivocally denotes a point exactly 1.5 seconds from the beginning of the processed media file.
+The precision of these timestamps is a critical consideration for production deployment. The internal alignment models utilized by AssemblyAI provide timestamps that are accurate to within approximately 400 milliseconds. This tolerance window is generally imperceptible in standard captioning workflows, where reading speed and visual synchronization are prioritized over strictly phase-locked acoustic alignment. However, understanding this margin is vital for developers building applications requiring frame-perfect edits or forensic audio analysis. The system converts the probabilistic outputs of the acoustic model into definitive start and end times, providing a deterministic structure that developers can rely on for building user interfaces and data pipelines.
+1.2 The Hierarchical Taxonomy of Timestamp Data
+To navigate the capabilities of the AssemblyAI platform, one must understand the hierarchical taxonomy of the temporal data provided. The API does not return a single type of timestamp; rather, it offers a stratified layer of temporal information, each serving distinct linguistic and functional purposes.
+Timestamp Layer
+	Granularity
+	Primary Unit
+	Data Source
+	Typical Use Case
+	Atomic
+	High
+	Words
+	transcript.words
+	Karaoke, precision editing, word clouds
+	Semantic
+	Medium
+	Sentences
+	get_sentences()
+	Subtitles, readability, NLP analysis
+	Structural
+	Medium
+	Paragraphs
+	get_paragraphs()
+	Blog generation, long-form reading
+	Identity
+	Variable
+	Utterances
+	utterances
+	Chat views, speaker analytics
+	Thematic
+	Low
+	Chapters
+	chapters
+	Video navigation, summary generation
+	Salient
+	Variable
+	Key Phrases
+	auto_highlights
+	Search, content tagging
+	This report is structured to traverse this hierarchy, beginning with the setup of the ingestion pipeline and moving through each layer of temporal granularity. We will analyze the specific JSON structures returned by the API, the SDK methods used to access them, and the strategic implications of using one layer over another.
+2. Infrastructure and Authentication: establishing the Pipeline
+Before accessing any temporal data, a robust ingestion pipeline must be established. The retrieval of timestamps is not a standalone operation but a configured property of the transcription request. The setup process differs slightly between the Python and Node.js environments, but the underlying architectural principles—authentication, configuration, and asynchronous polling—remain consistent.
+2.1 SDK Installation and Environment Configuration
+The entry point for any AssemblyAI integration is the installation of the appropriate SDK. These libraries abstract the raw HTTP requests, managing the serialization of configuration objects and the handling of network latency.
+For Python environments, typically used in data science and backend processing, the installation is managed via pip. The command pip install assemblyai retrieves the core library. It is highly recommended to utilize virtual environments (e.g., venv) to isolate these dependencies, ensuring that the version of the SDK remains consistent across the development lifecycle. This isolation is critical when integrating ASR into larger systems with conflicting dependency trees.
+For Node.js environments, often utilized for web backends and serverless functions (like AWS Lambda or Cloudflare Workers), the package is installed via npm install assemblyai. The JavaScript SDK has seen significant evolution, with recent versions (v2.0 and beyond) supporting TypeScript natively and offering compatibility with edge runtimes like Deno and Bun.
+2.2 Authentication Security and API Keys
+Security is paramount when interacting with cloud-based ASR services. Authentication is handled via an API key, which links the request to a specific user account and billing quota. Hardcoding these keys into source code is a security vulnerability. The documentation explicitly advises the use of environment variables to manage these credentials securely.
+In a robust Python implementation, the python-dotenv library is often employed to load these secrets.
+import os
+from dotenv import load_dotenv
+import assemblyai as aai
+
+load_dotenv()
+aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")
+
+This pattern ensures that the API key is injected at runtime, keeping it out of version control systems.
+Similarly, in Node.js, the dotenv package is standard. The initialization of the client object explicitly consumes this variable:
+import { AssemblyAI } from 'assemblyai';
+const client = new AssemblyAI({ 
+ apiKey: process.env.ASSEMBLYAI_API_KEY 
+});
+
+This client instance then becomes the singleton through which all transcription requests—and consequently, all timestamp retrieval operations—are routed.
+2.3 The Configuration Object: Enabling Temporal Features
+The retrieval of specific types of timestamps—particularly those related to speaker identity and thematic chapters—requires explicit flags during the configuration phase. While word-level timestamps are often included by default in modern versions of the API, features like speaker_labels (diarization) and auto_chapters must be affirmatively requested.
+In Python, this is handled via the TranscriptionConfig object. This object acts as a strongly-typed definitions file for the request, allowing the developer to toggle various AI models.
+config = aai.TranscriptionConfig(
+   speaker_labels=True,
+   auto_chapters=True,
+   word_timestamps=True # Explicitly requesting word timings
+)
+
+By passing this configuration object to the transcriber, the developer instructs the backend to spin up the necessary inference engines (e.g., the diarization model or the summarization model) alongside the core acoustic model.
+In Node.js, this configuration is passed as a plain JavaScript object to the transcribe method. The keys match the API parameters directly.
+const params = {
+ audio: audioUrl,
+ speaker_labels: true,
+ auto_chapters: true
+};
+
+Understanding this configuration step is vital; attempting to access transcript.chapters on a transcript where auto_chapters was set to False will result in null data or attribute errors, as the underlying processing was never performed.
+3. The Atomic Unit: Deep Dive into Word-Level Timestamps
+The most granular and fundamental data point in the AssemblyAI ecosystem is the word-level timestamp. This represents the atomic unit of the transcript—the specific start and end time of a single token. All higher-order temporal structures (sentences, paragraphs, chapters) are essentially aggregations or derivatives of these atomic units.
+3.1 The JSON Data Structure of Words
+When a transcription is completed, the response object contains a key, typically labeled words, which holds an array of objects. Each object in this array corresponds to a recognized word in the audio stream. The structure of this object is standardized and rich in metadata.
+Based on the research snippets, the schema for a word object includes the following fields :
+* text (string): The textual representation of the spoken word. This includes the word itself and may include attached punctuation depending on the configuration.
+* start (integer): The time, in milliseconds relative to the start of the audio file, when the utterance of this word began.
+* end (integer): The time, in milliseconds relative to the start of the audio file, when the utterance of this word concluded.
+* confidence (float): A probability score between 0.0 and 1.0 indicating the model's certainty that the text accurately matches the acoustic signal.
+* speaker (string, optional): If diarization is enabled, this field contains the label (e.g., "A", "B") of the speaker who uttered the word.
+The reliability of these timestamps allows for precise mapping. For instance, if the start value is 1250 and the end value is 1800, we know the word lasted exactly 550 milliseconds. This calculation is trivial for a computer but essential for applications like lip-syncing in animation or precise subtitle rendering.
+3.2 Iteration and Extraction Strategies in Python
+In the Python SDK, the transcript object returned by the transcriber.transcribe() method exposes the words list as a direct attribute. The standard pattern for accessing this data involves iterating through the list.
+The snippets provide a clear example of this iteration.
+for word in transcript.words:
+   print(f"Word: {word.text}, Start: {word.start}, End: {word.end}, Confidence: {word.confidence}")
+
+This loop allows developers to process the transcript token by token. A common application is converting these millisecond values into seconds for display purposes. Since the raw data is in milliseconds, dividing by 1000 converts the integer to a float representing seconds.
+start_sec = word.start / 1000
+end_sec = word.end / 1000
+
+This conversion is necessary for most UI frameworks or video players that expect time in seconds or HH:MM:SS format.
+Furthermore, the confidence score included in this object enables "confidence mapping." A developer can write logic to flag words where word.confidence < 0.7, highlighting them in the UI to prompt manual review by a human editor. This combines the temporal precision with quality assurance metrics.
+3.3 Iteration and Extraction Strategies in Node.js
+The Node.js SDK implementation mirrors the Python logic but utilizes JavaScript's array methods. The asynchronous nature of Node.js is particularly well-suited for handling the response payload. Once the promise returned by client.transcripts.transcribe resolves, the transcript.words array is available for consumption.
+transcript.words.forEach(word => {
+ const startSec = word.start / 1000;
+ const endSec = word.end / 1000;
+ console.log(`'${word.text}' from ${startSec.toFixed(2)}s to ${endSec.toFixed(2)}s`);
+});
+
+This snippet demonstrates not just access, but the formatting of the time to two decimal places, a common requirement for user-facing displays. The Node.js SDK standardizes the response such that the words array is always present if the transcription was successful, ensuring that frontend applications have a reliable contract for data availability.
+3.4 Implications of Offset and Latency
+Two advanced considerations arise when working with word timestamps: offset and latency.
+Audio Start Offset: In many production workflows, the audio sent to the API is a segment of a larger file—for example, a 5-minute clip cut from a 2-hour broadcast. If this clip is sent as-is, the timestamps will start at 0. To align these timestamps with the original master file, the API accepts an audio_start_from parameter (in milliseconds). This parameter instructs the internal clock of the transcriber to begin counting from the specified offset. If audio_start_from is set to 60000 (1 minute), the first word's timestamp might be 60500 instead of 500. This feature is critical for distributed processing architectures where large files are chunked for parallel transcription.
+Latency: The generation of these timestamps requires computational resources. The processing time is typically a fraction of the audio duration (20-30%). Developers must account for this latency in their application flow, implementing loading states while the "Processing" status transitions to "Completed."
+4. Semantic Segmentation: Sentence and Paragraph Alignment
+While word timestamps provide atomic precision, they lack linguistic context. Humans process information in thoughts (sentences) and topics (paragraphs), not isolated words. To bridge this gap, AssemblyAI provides semantic segmentation features that aggregate atomic timestamps into meaningful linguistic units.
+4.1 The Logic of Semantic Segmentation
+It is crucial to distinguish between acoustic segmentation and semantic segmentation. Acoustic segmentation might break a transcript based on pauses or silence. Semantic segmentation, which AssemblyAI employs, analyzes the syntax and grammar of the transcribed text to determine logical boundaries. The model predicts where periods, question marks, and paragraph breaks should occur based on the meaning of the words, and then calculates the timestamps for these aggregate units.
+This approach ensures that a long pause in the middle of a sentence (perhaps for dramatic effect) does not erroneously break the sentence into two timestamped units. Conversely, a rapid-fire change of topic without a pause is correctly identified as a paragraph break.
+4.2 Retrieving Sentence Timestamps
+Sentence-level timestamps are highly valuable for subtitle display logic, where displaying one complete sentence at a time often offers a better reading experience than a scrolling ticker.
+Python Implementation: In the Python SDK, accessing sentences requires a specific method call: transcript.get_sentences(). This method parses the underlying data and returns a list of sentence objects.
+sentences = transcript.get_sentences()
+for sentence in sentences:
+   print(f"Text: {sentence.text}")
+   print(f"Time: {sentence.start} - {sentence.end}")
+
+Each sentence object contains the full text of the sentence and the start and end timestamps. The start timestamp corresponds to the start of the first word in the sentence, and the end timestamp corresponds to the end of the last word. This aggregation is performed automatically by the SDK, saving the developer from writing complex accumulation logic.
+API Endpoint Implementation: For developers interacting directly with the API (e.g., via cURL or a custom HTTP client), sentence data is retrieved via a dedicated endpoint resource. The GET request is structured as /v2/transcript/:transcript_id/sentences. The JSON response is an array of objects:
+
+
+This separation of resources (base transcript vs. sentences) keeps the initial response payload lighter while making the semantic data available on demand.
+4.3 Retrieving Paragraph Timestamps
+Paragraphs represent a higher level of abstraction, grouping sentences into thematic blocks. This is particularly useful for generating blog posts from audio or for creating "Skip to Next Section" navigation controls in media players.
+Python Implementation: Similar to sentences, paragraphs are retrieved via transcript.get_paragraphs().
+paragraphs = transcript.get_paragraphs()
+for paragraph in paragraphs:
+   print(f"Paragraph starting at {paragraph.start}: {paragraph.text[:50]}...")
+
+The paragraph object maintains the same text, start, and end properties, but spans a much longer duration.
+API Endpoint Implementation: The corresponding API endpoint is /v2/transcript/:transcript_id/paragraphs. This endpoint returns the text segmented into paragraph blocks, complete with bounding timestamps. This is essential for layout engines that need to render transcripts as readable articles rather than raw scripts.
+4.4 Comparative Analysis: Words vs. Sentences vs. Paragraphs
+Feature
+	Words
+	Sentences
+	Paragraphs
+	Precision
+	High (Atomic)
+	Medium (Linguistic)
+	Low (Thematic)
+	Context
+	None
+	Grammatical
+	Topical
+	Access Method (Python)
+	.words attribute
+	.get_sentences() method
+	.get_paragraphs() method
+	Access Method (API)
+	Main response
+	/sentences endpoint
+	/paragraphs endpoint
+	Primary Use Case
+	Synchronization
+	Captioning
+	Content formatting
+	This comparison highlights that the choice of timestamp layer depends entirely on the downstream application. A karaoke app fails if it uses sentence timestamps; a blog generator fails if it uses word timestamps.
+5. Identity and Time: Speaker Diarization Architecture
+In multi-speaker audio—such as meetings, podcasts, or interviews—knowing what was said is insufficient; one must know who said it. Speaker Diarization is the process of identifying speaker changes and assigning labels to speech segments. AssemblyAI integrates this directly into the timestamping architecture.
+5.1 Configuration and Detection
+Diarization is computationally intensive and is not enabled by default. To receive speaker-attributed timestamps, the speaker_labels parameter must be set to True in the transcription configuration.
+The model attempts to identify distinct acoustic signatures and cluster them. If the number of speakers is known a priori (e.g., a phone call with exactly two participants), the speakers_expected parameter can be passed to guide the clustering algorithm, potentially improving accuracy.
+5.2 The utterances Data Structure
+When diarization is enabled, the response object includes a crucial array called utterances. An "utterance" is defined as a continuous segment of speech by a single speaker. It represents a "turn" in the conversation.
+The structure of an utterance object is comprehensive:
+* speaker: A label identifying the voice (e.g., "A", "B", "C"). These are abstract labels; the model does not know the speakers' names unless custom speaker identification (a separate workflow) is applied.
+* start / end: The timestamps bounding the entire turn.
+* text: The aggregated text of the turn.
+* words: A nested array of word objects specific to this utterance.
+This nested words array is particularly powerful. It inherits the schema of the global word list but is scoped to the utterance. This means a developer has access to the speaker label for every single word.
+5.3 Handling Intermittent Speech and Crosstalk
+The utterances array provides a linearized view of the conversation. If Speaker A speaks, pauses for 2 seconds, and speaks again, the system may treat this as two distinct utterances or one, depending on the pause duration threshold.
+Furthermore, the availability of speaker labels at the word level allows for handling "crosstalk" or interruptions. While the utterances array might sequentialize the conversation for readability, analyzing the raw timestamps of words labeled "A" and words labeled "B" might reveal overlaps where both speakers were talking simultaneously (e.g., Speaker A's word at 1500ms-1800ms and Speaker B's word at 1600ms-1900ms).
+5.4 Practical Implementation Example
+To render a chat-style interface from a transcript, a developer iterates through the utterances array.
+Python Example:
+# Assuming config included speaker_labels=True
+for utterance in transcript.utterances:
+   speaker = utterance.speaker
+   time_start = utterance.start
+   print(f"Speaker {speaker} ({time_start}ms): {utterance.text}")
+
+This simple loop generates a script format:
+Speaker A (1000ms): Hello everyone. Speaker B (1500ms): Hi there, glad to be here.
+Node.js Example: In Node.js, the pattern is similar. The snippet describes the JSON response structure, which developers can map over to produce HTML elements for a web interface.
+transcript.utterances.forEach(utt => {
+ console.log(`Speaker ${utt.speaker}: ${utt.text}`);
+});
+
+By leveraging the timestamps within these utterance objects, the chat bubbles in a UI can appear in real-time synchronization with the audio playback, creating a dynamic "live chat" experience from a pre-recorded file.
+6. Thematic Abstraction: Auto Chapters and Summarization
+Moving beyond the literal transcription of speech, AssemblyAI offers "Audio Intelligence" models that derive high-level meaning from the content. The Auto Chapters feature is the pinnacle of this abstraction, providing a "summary over time".
+6.1 The Concept of Thematic Segmentation
+While sentences are defined by syntax and utterances by speaker identity, chapters are defined by topic. The Auto Chapters model analyzes the semantic flow of the transcript to detect shifts in subject matter. This is a complex NLP task that goes beyond simple keyword matching; it involves understanding the discourse structure.
+6.2 Configuration and Response Schema
+To utilize this, the auto_chapters parameter must be set to True. The response contains a chapters key, which holds an array of chapter objects.
+Each chapter object contains rich metadata :
+* gist: A very short topic label (e.g., "Marketing Strategy").
+* headline: A single-sentence summary of the section.
+* summary: A detailed paragraph summarizing the content of the chapter.
+* start: The timestamp (ms) where this topic begins.
+* end: The timestamp (ms) where this topic ends.
+6.3 Use Case: Automated YouTube Chapters
+One of the most compelling applications of this data is the automatic generation of YouTube video chapters. YouTube requires a specific format in the video description: MM:SS Chapter Title.
+Using the Auto Chapters data, a developer can automate this completely. The logic involves:
+1. Iterating through the transcript.chapters array.
+2. Extracting the start timestamp.
+3. Converting milliseconds to HH:MM:SS format.
+4. Extracting the headline or gist.
+5. Concatenating them into the required string format.
+Python Logic :
+def create_youtube_chapters(chapters):
+   lines =
+   for chapter in chapters:
+       # Conversion logic from ms to HH:MM:SS
+       seconds = chapter.start // 1000
+       m, s = divmod(seconds, 60)
+       h, m = divmod(m, 60)
+       timestamp = f"{h:02d}:{m:02d}:{s:02d}"
+       lines.append(f"{timestamp} {chapter.headline}")
+   return "\n".join(lines)
+
+This automation saves content creators hours of manual review time, instantly making their video content navigable and SEO-friendly.
+7. Content Intelligence: Key Phrases and Temporal Search
+Searchability is a primary driver for transcription. However, searching for every instance of a common word is not useful. The Key Phrases (or Auto Highlights) model identifies the most salient, relevant entities and terms in the audio and provides their specific timestamps.
+7.1 Detection and Ranking
+Enabled via auto_highlights=True, this model returns an auto_highlights_result object. This object contains a list of key phrases, ranked by their relevance to the overall context of the audio.
+7.2 Temporal Structure of Key Phrases
+Crucially, a key phrase often appears multiple times. Therefore, the data structure associates the phrase text with an array of timestamps.
+{
+ "text": "Air Quality",
+ "count": 3,
+ "rank": 0.95,
+ "timestamps": [
+   { "start": 5000, "end": 5500 },
+   { "start": 12000, "end": 12500 },
+   { "start": 45000, "end": 45500 }
+ ]
+}
+
+7.3 Application: Smart Scrubbing
+This data allows for the creation of "smart scrubbers" in video players. Instead of a blind seek bar, the player can display tick marks indicating where key topics (like "Air Quality" or "Wildfires") are discussed. When a user hovers over a tick mark, the player can show the timestamp and the phrase, allowing for non-linear consumption of the media based on interest.
+8. Interoperability and Export: Generating SRT and VTT Files
+While raw JSON data is powerful for custom applications, the industry standard for video captioning relies on specific file formats: SRT (SubRip Subtitle) and VTT (WebVTT). AssemblyAI provides built-in endpoints to generate these files directly, bypassing the need for developers to write their own converters.
+8.1 The Complexity of Caption formatting
+Converting a transcript to subtitles is not merely about timestamps; it is about readability. Captions must be broken into lines that fit on a screen (usually 32-42 characters) and must persist long enough to be read but not so long that they drift from the audio.
+AssemblyAI handles this "re-segmentation" logic internally. When requesting an SRT file, the API re-calculates the timestamps to group words into readable blocks that adhere to character limits.
+8.2 Customizing the Output
+The API allows for customization via the chars_per_caption parameter. By default, this might be set to a standard value, but developers can override it.
+* Python: transcript.export_subtitles_srt(chars_per_caption=32).
+* Node.js: client.transcripts.subtitles(transcript.id, "srt", 32).
+This parameter triggers a reprocessing of the word-level timestamps to generate a compliant subtitle stream.
+8.3 Export Implementation
+Python Workflow: The Python SDK makes exporting straightforward. The method returns the raw string content of the SRT file, which can then be written to disk.
+srt_content = transcript.export_subtitles_srt()
+with open("captions.srt", "w") as f:
+   f.write(srt_content)
+
+Node.js Workflow: In Node.js, the process utilizes the fs/promises module for modern file handling.
+import { writeFile } from "fs/promises";
+const srt = await client.transcripts.subtitles(transcript.id, "srt");
+await writeFile("./captions.srt", srt);
+
+This capability bridges the gap between AI analysis and standard video production workflows (e.g., Adobe Premiere, Final Cut Pro, or YouTube Studio), all of which accept SRT/VTT files as standard inputs.
+9. Conclusion
+The integration of temporal alignment into ASR workflows transforms static text into a multidimensional data structure. AssemblyAI’s architecture provides a comprehensive suite of tools for extracting this data, from the atomic precision of millisecond-accurate word timestamps to the broad thematic strokes of automated chapters.
+By providing a standardized "millisecond" currency and a hierarchical data model, the platform empowers developers to build diverse applications. Whether the requirement is for the rigorous identity tracking of speaker diarization in legal depositions, the semantic segmentation required for readable article generation, or the standards-compliant export of SRT files for entertainment media, the underlying API and SDKs offer a unified and robust pathway.
+The analysis of the Python and Node.js implementations demonstrates that while the syntax differs, the architectural logic is consistent. Both environments support the asynchronous polling patterns, secure authentication, and rich object traversal necessary to harness the full power of the transcription models. As ASR technology continues to mature, the precision and richness of these timestamps will remain the defining factor in the usability and value of speech-to-text systems.
+Works cited
+1. Transcribe Audio with Timestamps for Captions - Python - AssemblyAI, https://www.assemblyai.com/blog/how-to-transcribe-audio-with-timestamps 2. Does your API return timestamps for individual words? | AssemblyAI | Documentation, https://www.assemblyai.com/docs/faq/does-your-api-return-timestamps-for-individual-words 3. Convert Speech to Text in Python in 5 Minutes - AssemblyAI, https://www.assemblyai.com/blog/assemblyai-and-python-in-5-minutes 4. How to perform speaker diarization in JavaScript - AssemblyAI, https://www.assemblyai.com/blog/speaker-diarization-javascript 5. Node.js Speech-to-Text with Punctuation, Casing, and Formatting - AssemblyAI, https://www.assemblyai.com/blog/nodejs-stt-with-punctuation-casing-formatting 6. Announcing the AssemblyAI Node SDK 2.0, https://www.assemblyai.com/blog/announcing-node-sdk20 7. AI Video to Text with Timestamps - Python Tutorial - AssemblyAI, https://www.assemblyai.com/blog/ai-video-transcription 8. Auto Chapters | AssemblyAI | Documentation, https://www.assemblyai.com/docs/speech-understanding/auto-chapters 9. Speaker Diarization | AssemblyAI | Documentation, https://www.assemblyai.com/docs/pre-recorded-audio/speaker-diarization 10. Word-Level Timestamps | AssemblyAI | Documentation, https://www.assemblyai.com/docs/pre-recorded-audio/word-level-timestamps 11. Get transcript | AssemblyAI | Documentation, https://www.assemblyai.com/docs/api-reference/transcripts/get 12. Transcribe audio | AssemblyAI | Documentation, https://www.assemblyai.com/docs/api-reference/transcripts/submit 13. AssemblyAI - Connectors - Microsoft Learn, https://learn.microsoft.com/en-us/connectors/assemblyai/ 14. Get sentences in transcript | AssemblyAI | Documentation, https://www.assemblyai.com/docs/api-reference/transcripts/get-sentences 15. AssemblyAI/assemblyai-python-sdk: AssemblyAI's Official ... - GitHub, https://github.com/AssemblyAI/assemblyai-python-sdk 16. Export Paragraphs and Sentences | AssemblyAI | Documentation, https://www.assemblyai.com/docs/pre-recorded-audio/export-paragraphs-and-sentences 17. Get paragraphs in transcript | AssemblyAI | Documentation, https://www.assemblyai.com/docs/api-reference/transcripts/get-paragraphs?explorer=true 18. Top 8 speaker diarization libraries and APIs in 2025 - AssemblyAI, https://www.assemblyai.com/blog/top-speaker-diarization-libraries-and-apis 19. Using multichannel and speaker diarization - AssemblyAI, https://www.assemblyai.com/blog/multichannel-speaker-diarization 20. Speaker Identification | AssemblyAI | Documentation, https://www.assemblyai.com/docs/speech-understanding/speaker-identification 21. Automatic Chapter Detection With AssemblyAI | Python Tutorial - YouTube, https://www.youtube.com/watch?v=GvfmDGin7Zs 22. Introducing Auto Chapters - Summarize Audio and Video Files - AssemblyAI, https://www.assemblyai.com/blog/introducing-assemblyai-auto-chapters-summarize-audio-and-video-files 23. Automatically determine video sections with AI using Python - AssemblyAI, https://www.assemblyai.com/blog/automatically-determine-video-sections-with-ai-using-python 24. Key Phrases | AssemblyAI | Documentation, https://www.assemblyai.com/docs/speech-understanding/key-phrases 25. Export SRT or VTT Caption Files | AssemblyAI | Documentation, https://www.assemblyai.com/docs/pre-recorded-audio/export-srt-or-vtt-caption-files 26. Automated SRT and VTT Video Captions (April 2020 Update) - AssemblyAI, https://www.assemblyai.com/blog/automated-srt-vtt-video-captions-april-2020 27. How to Create SRT Files for Videos in Node.js - AssemblyAI, https://www.assemblyai.com/blog/srt-video-nodejs

@@ -19,7 +19,14 @@ A collection of technical documentation and guides for AI/ML development.
   - Integration examples
 
 ### SEO & Agentic Commerce
-- **SEO_BIBLE_JAN_2026.md** - The SEO & Agentic Commerce Bible (January 2026 Edition). Canonical reference for 2026 web architecture: Authenticity Update, Universal Commerce Protocol (UCP), agent + human dual-layer, schema.org Data Hooks, local SEO Core 30, Agentic Commerce Optimization (ACO), and agent defense patterns. Single source of truth for SEO across TriCon projects.
+- **SEO_BIBLE_JAN_2026.md** - The SEO & Agentic Commerce Bible (January 2026 Edition, **Version 2.0**).
+  Comprehensive reference (517 lines) synthesizing the Authenticity Update, UCP, Gemini 3 Pro, and Jan 2026 Core Update.
+  Includes core execution protocol + deep-dives:
+  - Social Discovery Algorithm (TikTok/Reels/Shorts: ASR, OCR, algorithm weighting)
+  - Multimodal Visual Search SEO (Google Lens, smart glasses, schema, EXIF/GPS, pixel quality)
+  - Agentic Commerce Optimization (ACO) & persuasion layers
+  - Programmatic SEO + Voice Search
+  Single source of truth for SEO across TriCon projects.
 
 ## Related Projects
 - [osha-rag-bot](https://github.com/arealicehole/osha-rag-bot) - Multimodal RAG implementation for OSHA compliance training

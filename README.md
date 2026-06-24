@@ -18,6 +18,9 @@ A collection of technical documentation and guides for AI/ML development.
   - Rate limiting and pricing
   - Integration examples
 
+### SEO & Agentic Commerce
+- **SEO_BIBLE_JAN_2026.md** - The SEO & Agentic Commerce Bible (January 2026 Edition). Canonical reference for 2026 web architecture: Authenticity Update, Universal Commerce Protocol (UCP), agent + human dual-layer, schema.org Data Hooks, local SEO Core 30, Agentic Commerce Optimization (ACO), and agent defense patterns. Single source of truth for SEO across TriCon projects.
+
 ## Related Projects
 - [osha-rag-bot](https://github.com/arealicehole/osha-rag-bot) - Multimodal RAG implementation for OSHA compliance training
 - [miyu-data](https://github.com/arealicehole/miyu-data) - Custom RAG with Pinecone and OpenRouter

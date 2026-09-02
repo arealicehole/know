@@ -1,10 +1,9 @@
 # Geraldo research archive
 
-Durable research reports from geraldov21. Primary publish target for all future GIU work.
+**Single durable home for geraldov21 reports.** Do not mirror into `fed/docs` or elsewhere.
 
-Convention: `<topic-slug>-<task_id>.md`
-
-Also mirrored under `/srv/app-data/geraldov2/research-output/<task_id>.md` and, when project-scoped, `/home/ice/fed/docs/<project>/`.
+Convention: `<topic-slug>-<task_id>.md`  
+Remote: https://github.com/arealicehole/know
 
 ## Tomato (2026-09-02)
 

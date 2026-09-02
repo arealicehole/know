@@ -34,3 +34,6 @@ A collection of technical documentation and guides for AI/ML development.
 
 ## Usage
 These documents serve as reference material for building RAG applications and integrating with AI APIs.
+### Research archive (`research/`)
+Durable Geraldo (geraldov21) research reports. Naming: `<topic-slug>-<task_id>.md`.
+Primary publish target for GIU deep research. Local clone path: `/home/ice/know`.

@@ -1,0 +1,111 @@
+{
+  "task_id": "t_2d125f8e",
+  "title": "Tomato env/public-URL/secrets contract",
+  "created": "2026-09-02",
+  "citations": [
+    {
+      "id": "E1",
+      "label": "Meta Instagram Content Publishing",
+      "url": "https://developers.facebook.com/docs/instagram-platform/content-publishing/",
+      "retrieved": "2026-09-02",
+      "method": "web_extract",
+      "supports": ["C1"]
+    },
+    {
+      "id": "E2",
+      "label": "Meta IG User Media reference",
+      "url": "https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media/",
+      "retrieved": "2026-09-02",
+      "method": "web_extract",
+      "supports": ["C1"]
+    },
+    {
+      "id": "E3",
+      "label": "Meta Manual Login Flow",
+      "url": "https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow/",
+      "retrieved": "2026-09-02",
+      "method": "web_extract",
+      "supports": ["C2"]
+    },
+    {
+      "id": "E4",
+      "label": "Meta Login Security",
+      "url": "https://developers.facebook.com/documentation/facebook-login/security",
+      "retrieved": "2026-09-02",
+      "method": "web_extract",
+      "supports": ["C2"]
+    },
+    {
+      "id": "E5",
+      "label": "TikTok Login Kit Web",
+      "url": "https://developers.tiktok.com/docs/en/login-kit-web",
+      "retrieved": "2026-09-02",
+      "method": "browser",
+      "supports": ["C3"]
+    },
+    {
+      "id": "E6",
+      "label": "TikTok Media Transfer Guide",
+      "url": "https://developers.tiktok.com/docs/en/content-posting-api-media-transfer-guide",
+      "retrieved": "2026-09-02",
+      "method": "browser",
+      "supports": ["C4", "C5"]
+    },
+    {
+      "id": "E7",
+      "label": "Postproxy TikTok API guide",
+      "url": "https://postproxy.dev/blog/how-to-post-to-tiktok-via-api/",
+      "retrieved": "2026-09-02",
+      "method": "web_extract",
+      "supports": ["C5"]
+    },
+    {
+      "id": "E8",
+      "label": "Cloudflare Tunnel setup",
+      "url": "https://developers.cloudflare.com/tunnel/setup/",
+      "retrieved": "2026-09-02",
+      "method": "web_extract",
+      "supports": ["C6"]
+    },
+    {
+      "id": "E9",
+      "label": "Postiz .env.example",
+      "url": "https://raw.githubusercontent.com/gitroomhq/postiz-app/main/.env.example",
+      "retrieved": "2026-09-02",
+      "method": "web_extract",
+      "supports": ["C9"]
+    },
+    {
+      "id": "E10",
+      "label": "Postiz TikTok provider docs",
+      "url": "https://docs.postiz.com/self-host/providers/tiktok",
+      "retrieved": "2026-09-02",
+      "method": "web_extract",
+      "supports": ["C4", "C9"]
+    },
+    {
+      "id": "E11",
+      "label": "Postiz Facebook provider docs",
+      "url": "https://docs.postiz.com/self-host/providers/facebook",
+      "retrieved": "2026-09-02",
+      "method": "web_extract",
+      "supports": ["C2", "C9"]
+    },
+    {
+      "id": "E12",
+      "label": "Huly TOM-1",
+      "url": "huly://TOM-1",
+      "retrieved": "2026-09-02",
+      "method": "mcp__julio__search_huly",
+      "supports": ["C10"]
+    },
+    {
+      "id": "E13",
+      "label": "Next.js cookies",
+      "url": "https://nextjs.org/docs/app/api-reference/functions/cookies",
+      "retrieved": "2026-09-02",
+      "method": "web_extract",
+      "supports": ["C8"]
+    }
+  ]
+}

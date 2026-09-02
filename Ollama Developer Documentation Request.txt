@@ -1,0 +1,1015 @@
+﻿Ollama: The Definitive Developer's Guide to Local LLM Deployment
+
+
+
+
+Part 1: Getting Started with Ollama
+
+
+This section provides a foundational understanding of Ollama, its architecture, and the necessary steps to prepare a system for installation. It is designed to onboard developers by establishing core concepts before proceeding to advanced technical configurations.
+
+
+1.1. Introduction to Ollama: The Local-First LLM Platform
+
+
+Ollama is a comprehensive framework designed to significantly simplify the process of downloading, configuring, and running open-source large language models (LLMs) on local hardware.1 Its fundamental purpose is to abstract away the considerable complexity typically associated with setting up and managing the environments required for machine learning models, thereby making powerful AI accessible to a broader audience of developers and researchers.
+The core architectural principle of Ollama revolves around a self-contained packaging system. It bundles model weights, configurations, and associated data into a single, portable unit defined by a configuration file known as a Modelfile.3 This approach is analogous to how Docker uses a
+Dockerfile to define container images. This abstraction layer is responsible for handling intricate setup details, including the automatic optimization of hardware resources like GPU acceleration, without requiring manual intervention from the user.3 This design philosophy effectively transforms a complex software stack into a simple, manageable appliance. Instead of the traditional, often fragile, process of managing Python environments, PyTorch versions, and CUDA dependencies, a user installs the Ollama application, which then functions as a self-sufficient service. It operates much like a database server, which serves data upon request; Ollama serves LLM inferences, making local AI a stable and reliable component of a developer's toolkit.
+Functionally, Ollama exposes two primary interfaces for interaction: a Command-Line Interface (CLI) for direct user engagement and model management, and a REST API for programmatic integration into applications.6 This dual-interface approach caters to both interactive experimentation and automated workflows. The API, which runs as a background service by default, serves as the gateway to a vibrant and expanding ecosystem of third-party tools, libraries, and graphical user interfaces.5
+Ollama supports an extensive and continuously growing library of state-of-the-art open-source models. This includes prominent model families such as Meta's Llama series (Llama 2, Llama 3, Llama 3.1, Llama 3.2), Google's Gemma and Gemma 3, Mistral AI's Mistral, Microsoft's Phi-3 and Phi-4, and Alibaba's Qwen models, among many others.1 This vast selection provides developers with the flexibility to choose the optimal model for their specific use case, whether it involves text generation, coding assistance, multimodal understanding, or embedding creation.
+
+
+1.2. System Requirements and Pre-flight Checks
+
+
+Before installing Ollama, it is crucial to ensure that the host system meets the necessary hardware and software requirements. The performance of LLMs is highly dependent on available system resources, and meeting these recommendations is essential for a smooth and responsive user experience.
+
+
+Hardware Recommendations
+
+
+* System Memory (RAM): The amount of RAM required is directly proportional to the size of the model being run, as Ollama loads the entire model into memory for inference.10 The following guidelines are recommended:
+   * 8 GB: Minimum for running 7-billion (7B) parameter models.
+   * 16 GB: Recommended for running 13-billion (13B) parameter models.
+   * 32 GB or more: Necessary for running 33-billion (33B) and larger models, or for running multiple models concurrently.1
+* Storage: LLM files are substantial in size. For instance, the smallest Llama 3.1 model exceeds 4 GB.6 A minimum of 10 GB of free space is advisable, but this should be scaled based on the number and size of models to be downloaded. Using a Solid-State Drive (SSD) is highly recommended over a traditional hard disk drive (HDD) as it significantly reduces model loading times, leading to faster application startup.10
+* Graphics Processing Unit (GPU): While Ollama can run in a CPU-only configuration, performance for all but the smallest models will be slow. For practical and interactive use, a compatible GPU is strongly recommended.
+   * NVIDIA: GPUs with CUDA support are the most mature and widely supported option.
+   * AMD: GPUs with ROCm support can be used, though configuration may be more involved.10
+The following table provides a consolidated view of system requirements based on model size, which is a critical reference for developers planning their local AI environment.
+Model Parameter Size
+	Recommended System RAM (CPU-only)
+	Recommended GPU VRAM
+	1B - 3B
+	8 GB
+	4 GB
+	7B
+	8 GB - 16 GB
+	8 GB
+	13B
+	16 GB - 32 GB
+	12 GB
+	34B
+	32 GB - 64 GB
+	24 GB
+	70B+
+	64 GB+
+	48 GB (or 2x 24 GB)
+	Note: These are estimates. Actual memory usage can vary based on the model's quantization level and the configured context window size (num_ctx).
+
+
+Software Prerequisites
+
+
+* Operating System: Ollama is officially supported on the following platforms:
+   * macOS 10.15 or newer.10
+   * Windows 10/11 (available as a preview release as of February 2024).5
+   * Linux distributions such as Ubuntu 20.04+, CentOS 8+, and Debian 11+.10
+* Development Environment: For developers intending to build applications that integrate with Ollama, the following are required for using the official libraries and popular frameworks:
+   * Python: Version 3.8 or newer is necessary for the ollama-python library and integrations like LangChain.10
+   * Node.js: A recent version is required for using the ollama-js library.11
+
+
+1.3. Installation and Setup
+
+
+The installation process for Ollama is designed to be simple and streamlined across all supported operating systems.
+* macOS:
+   1. Download the official installer from the Ollama website.1
+   2. Alternatively, for users of the Homebrew package manager, Ollama can be installed and managed as a service with the following commands 7:
+Bash
+brew install ollama
+brew services start ollama
+
+   * Windows:
+   1. Download the OllamaSetup.exe installer from the official website.1
+   2. Run the installer. The Windows version is notable for its integrated experience, which includes built-in GPU acceleration detection and the automatic configuration of the Ollama API as a background service, requiring no additional setup.5
+   * Linux:
+   1. The recommended installation method is a single command that downloads and executes an installation script 1:
+Bash
+curl -fsSL https://ollama.com/install.sh | sh
+
+   2. This script handles the installation of the Ollama binary and sets it up as a systemd service, ensuring it starts automatically on system boot.10
+
+
+Post-Installation Verification
+
+
+After installation, it is important to verify that Ollama is functioning correctly. Open a terminal or command prompt and run the following command to download and interact with a small, fast model like Llama 3.2 1:
+
+
+Bash
+
+
+
+
+ollama run llama3.2
+
+If the installation was successful, Ollama will download the model (if not already present) and present an interactive prompt (>>>). This confirms that the core application and its connection to the model library are working correctly.
+
+
+Part 2: Hardware Acceleration
+
+
+Achieving optimal performance with large language models on local hardware necessitates the use of GPU acceleration. This section provides detailed instructions for configuring Ollama to leverage both NVIDIA (CUDA) and AMD (ROCm) GPUs. The setup process for these two platforms differs significantly in complexity, a factor that can influence a developer's choice of hardware.
+
+
+2.1. Configuring NVIDIA GPU Acceleration (CUDA)
+
+
+NVIDIA's CUDA platform provides a mature and well-supported ecosystem for GPU computing, and Ollama's integration with it is consequently straightforward. For most users, the setup is nearly automatic.
+      * Prerequisites:
+      1. NVIDIA Drivers: The official proprietary NVIDIA drivers must be installed on the host system.
+      2. NVIDIA Container Toolkit: For users deploying Ollama via Docker, the NVIDIA Container Toolkit is essential. It enables Docker containers to access the host's GPU hardware.16
+      * Native Installation (Linux): When Ollama is installed directly on a Linux host, the systemd service is configured to automatically detect and utilize any available NVIDIA GPUs and their corresponding drivers. No further configuration is typically required. The successful initialization of the GPU can be confirmed by examining the Ollama logs.
+      * Windows Installation: The official Ollama installer for Windows includes built-in support for NVIDIA GPU acceleration. The setup process automatically detects the hardware and configures Ollama accordingly, offering a seamless, "it just works" experience with no manual configuration needed.5
+      * Docker Deployment: To enable GPU support within a Docker container, the --gpus=all flag must be added to the docker run command. This flag instructs the Docker daemon, via the NVIDIA Container Toolkit, to pass through all available host GPUs to the container.16
+Bash
+docker run -d --gpus=all -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
+
+      * Advanced Configuration (Multi-GPU Systems): In environments with multiple GPUs, developers can control which specific GPUs are visible to Ollama by setting the CUDA_VISIBLE_DEVICES environment variable. For example, setting CUDA_VISIBLE_DEVICES=0,1 would restrict Ollama to using only the first two GPUs.19 This is typically configured in the service definition file for native installs or in the Docker environment variables.
+
+
+2.2. Configuring AMD GPU Acceleration (ROCm)
+
+
+Enabling GPU acceleration for AMD hardware is a more involved process due to the nature of the Radeon Open Compute platform (ROCm), which has a more limited list of officially supported hardware compared to CUDA.21 However, community-driven methods have made it possible to use a wide range of "unsupported" cards.
+         * Prerequisites: The appropriate AMD drivers and ROCm libraries must be installed on the host system. The installation method varies by Linux distribution.
+         * Arch Linux: Users can install dedicated packages from the repositories, such as ollama-rocm and the required rocm-hip-sdk.22
+         * Debian/Ubuntu: The amdgpu-install script provided by AMD is often used to install the necessary driver and ROCm components.24
+         * The HSA_OVERRIDE_GFX_VERSION Environment Variable: This is the most critical configuration step for users with AMD GPUs that are not on the official ROCm support list, which includes many popular consumer cards from the RX 6000 and 7000 series. This variable forces the ROCm runtime to bypass its hardware compatibility check and treat the unsupported GPU as a supported one.12
+The process is as follows:
+            1. Identify the GPU's GFX Version: The internal architecture name (e.g., gfx1103) must be identified. This can often be found using the glxinfo command or by consulting online hardware databases.22
+Bash
+glxinfo | grep "Device:"
+
+            2. Set the Override Variable: The HSA_OVERRIDE_GFX_VERSION variable should be set to a version number that corresponds to a supported architecture that is functionally similar to the user's GPU. For example, many Navi 2x cards use 10.3.0, while Navi 3x cards may use 11.0.2.12
+            3. Apply the Variable Persistently: To ensure Ollama always uses this setting, the environment variable must be added to its systemd service configuration. This is done safely using a drop-in file to avoid modifying the main service file directly.12
+Bash
+# Create and edit the override configuration file
+sudo systemctl edit ollama.service
+
+In the editor, add the following lines, replacing 10.3.0 with the appropriate version:
+Ini, TOML
+Environment="HSA_OVERRIDE_GFX_VERSION=10.3.0"
+
+After saving the file, reload the systemd daemon and restart the Ollama service:
+Bash
+sudo systemctl daemon-reload
+sudo systemctl restart ollama.service
+
+               * Docker Deployment (ROCm): To use an AMD GPU with Docker, specific device files must be passed into the container. The official ollama/ollama image provides a :rocm tag for this purpose.16
+Bash
+docker run -d --device /dev/kfd --device /dev/dri -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama:rocm
+
+This command requires that the ROCm drivers are correctly installed and configured on the host machine. If the HSA_OVERRIDE_GFX_VERSION is needed, it must be passed to the container as an environment variable using the -e flag.
+
+
+2.3. Troubleshooting GPU Issues
+
+
+Verifying that the GPU is being utilized correctly is a crucial final step.
+                  * Verification Methods:
+                  * Ollama Logs: Check the service logs (journalctl -u ollama.service on Linux) for messages indicating GPU detection and initialization.
+                  * ollama ps: The ollama ps command shows currently running models and indicates whether they are loaded on the CPU or GPU.22
+                  * System Monitoring Tools: While running a model, use standard GPU monitoring utilities to observe VRAM usage and GPU load.
+                  * NVIDIA: nvidia-smi.15
+                  * AMD: nvtop or amdgpu_top.12
+                  * Common AMD Issues and Solutions:
+                  * Error: amdgpu is not supported: This log message is a clear indicator that the HSA_OVERRIDE_GFX_VERSION environment variable is required.12
+                  * Integrated GPU (iGPU) Conflicts: On systems with both an AMD iGPU and a discrete GPU, Ollama might default to the less powerful iGPU. While newer versions attempt to prioritize the discrete card, older setups may require explicitly setting ROCR_VISIBLE_DEVICES=0 (or 1) to select the correct GPU.26
+                  * Insufficient iGPU VRAM: A common failure point for APUs is insufficient system RAM allocated to the iGPU in the system's BIOS/UEFI settings. ROCm often requires at least 4 GB of shared VRAM to function, but many systems default to a much lower value like 512 MB. This must be adjusted in the BIOS for acceleration to work.22
+The disparity in setup complexity between NVIDIA and AMD platforms has strategic implications for developers. The NVIDIA path represents a streamlined, "happy path" where the hardware and software are tightly integrated, minimizing setup friction. The AMD path, while more complex, embodies the open-source ethos of community-driven workarounds and deep system configuration. For developers prioritizing immediate productivity and minimal setup overhead, an NVIDIA GPU is the more pragmatic choice. For those comfortable with Linux system administration and committed to using AMD hardware, the path to success is well-documented but requires more patience and technical diligence.
+
+
+Part 3: Containerized Deployment with Docker
+
+
+For developers who prioritize reproducibility, isolation, and platform consistency, deploying Ollama with Docker is the recommended approach. Containerization encapsulates the application and its dependencies, ensuring that it runs identically regardless of the host environment. This section covers CPU-only, GPU-accelerated, and multi-service deployments using Docker and Docker Compose.
+
+
+3.1. Basic Docker Setup (CPU-Only)
+
+
+For systems without a compatible GPU or for use cases where performance is not critical, the CPU-only Docker setup is the simplest method of deployment. A single command is sufficient to download the official image and start the container.
+
+
+Bash
+
+
+
+
+docker run -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
+
+This command can be broken down as follows 17:
+                  * docker run: The standard command to create and start a new container.
+                  * -d: Runs the container in "detached" mode, meaning it runs in the background.
+                  * -v ollama:/root/.ollama: This is a critical component for data persistence. It creates a named Docker volume called ollama and mounts it to the /root/.ollama directory inside the container, which is where Ollama stores downloaded models. This ensures that models are not lost when the container is stopped or removed.
+                  * -p 11434:11434: Maps port 11434 on the host machine to port 11434 in the container, exposing the Ollama REST API to the local network.
+                  * --name ollama: Assigns a convenient name to the container for easy reference in subsequent commands (e.g., docker stop ollama).
+                  * ollama/ollama: Specifies the official Docker image to use.
+
+
+3.2. Docker with GPU Support (NVIDIA & AMD)
+
+
+To leverage hardware acceleration, the docker run command must be modified to grant the container access to the host's GPU. This process relies on the host system having the correct drivers and toolkits installed, as detailed in Part 2.
+                  * NVIDIA GPU Support:
+The --gpus=all flag is used to enable NVIDIA GPU access, which requires the NVIDIA Container Toolkit to be installed on the host.17
+Bash
+docker run -d --gpus=all -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
+
+                  * AMD GPU Support (ROCm):
+For AMD GPUs, the :rocm image tag must be used, and the relevant device files (/dev/kfd and /dev/dri) must be passed through to the container.16
+Bash
+docker run -d --device /dev/kfd --device /dev/dri -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama:rocm
+
+In both GPU-accelerated scenarios, the volume mount (-v ollama:/root/.ollama) remains essential for persisting model data across container lifecycles.17
+
+
+3.3. Advanced Orchestration with Docker Compose
+
+
+While docker run is suitable for single-container deployments, Docker Compose is the standard tool for defining and managing multi-service applications. It uses a YAML file (docker-compose.yml) to configure all application services, networks, and volumes in a declarative way.27 This is particularly useful for setting up Ollama alongside a web-based frontend like Open WebUI.
+The use of Docker provides a consistent deployment methodology that works across macOS, Windows, and Linux. While the initial host-level GPU driver setup is platform-specific, the application deployment itself becomes entirely platform-agnostic once Docker is installed. This makes Docker the superior choice for development teams with diverse operating systems and for anyone who values creating portable, reproducible environments.
+Below is an example docker-compose.yml file for deploying Ollama with NVIDIA GPU support and the Open WebUI interface:
+
+
+YAML
+
+
+
+
+version: '3.8'
+
+services:
+ ollama:
+   image: ollama/ollama
+   container_name: ollama
+   ports:
+     - "11434:11434"
+   volumes:
+     - ollama_data:/root/.ollama
+   deploy:
+     resources:
+       reservations:
+         devices:
+           - driver: nvidia
+             count: all
+             capabilities: [gpu]
+   restart: unless-stopped
+
+ open-webui:
+   image: ghcr.io/open-webui/open-webui:main
+   container_name: open-webui
+   ports:
+     - "3000:8080"
+   volumes:
+     - openwebui_data:/app/backend/data
+   environment:
+     - OLLAMA_BASE_URL=http://ollama:11434
+   depends_on:
+     - ollama
+   restart: unless-stopped
+
+volumes:
+ ollama_data:
+ openwebui_data:
+
+Key aspects of this configuration file include 17:
+                     * ollama service:
+                     * deploy.resources.reservations.devices: This section is how Docker Compose requests GPU resources. The configuration shown is for NVIDIA GPUs.17
+                     * volumes: Uses a named volume ollama_data for model persistence.
+                     * open-webui service:
+                     * depends_on: [ollama]: This crucial directive ensures that Docker Compose starts the ollama service before starting open-webui, preventing connection errors on startup.
+                     * environment.OLLAMA_BASE_URL: This configures Open WebUI to communicate with the Ollama API. It uses the service name ollama as the hostname, which is resolved by Docker's internal DNS service.
+                     * volumes: The top-level volumes key formally declares the named volumes used by the services.
+To launch this application stack, navigate to the directory containing the docker-compose.yml file and run docker compose up -d. To stop and remove the containers and network, use docker compose down.29
+
+
+Part 4: The Ollama Command-Line Interface (CLI) Reference
+
+
+The Ollama CLI is the primary tool for direct interaction with the Ollama server. It provides a comprehensive set of commands for managing models, running inference, and monitoring the service. This section serves as a detailed reference guide for its capabilities. For help with any command, the --help flag can be appended (e.g., ollama run --help).25
+The following table provides a high-level summary of the most common Ollama CLI commands.
+Command
+	Description
+	Common Flags/Arguments
+	Usage Example
+	serve
+	Starts the Ollama server. Usually runs as a background service.
+	--help
+	ollama serve
+	create
+	Creates a model from a Modelfile.
+	-f, --file <path>
+	ollama create my-model -f./Modelfile
+	run
+	Runs a model and starts an interactive chat session.
+	--verbose, --insecure
+	ollama run llama3.2
+	pull
+	Downloads a model from the Ollama library.
+	--insecure
+	ollama pull mistral
+	push
+	Pushes a model to a registry.
+	--insecure
+	ollama push my-model
+	list / ls
+	Lists all models stored locally.
+	N/A
+	ollama list
+	ps
+	Lists models currently running in memory.
+	N/A
+	ollama ps
+	show
+	Shows detailed information about a model.
+	--modelfile, --license
+	ollama show llama3.2 --modelfile
+	cp
+	Copies an existing local model to a new name.
+	<source> <destination>
+	ollama cp llama3.2 my-llama
+	rm
+	Removes a model from local storage.
+	<model_name>
+	ollama rm my-llama
+	help
+	Displays help information.
+	[command]
+	ollama help create
+	
+
+4.1. Model Management
+
+
+These commands are used for downloading, inspecting, and organizing local models.
+                     * ollama pull <model>: Downloads a specified model from the official Ollama library. Models can be specified with tags to select a specific version or quantization level (e.g., ollama pull gemma:2b).1 If no tag is provided, the
+latest tag is assumed.
+                     * ollama list (or ls): Displays a table of all models that have been downloaded to the local machine. The output includes the model name, a unique ID, its size on disk, and the date it was last modified.2
+                     * ollama show <model>: Provides detailed metadata about a specific model, including its license, parameters, and system prompt.2 A particularly powerful feature is the
+--modelfile flag, which prints the exact Modelfile used to create the model. This is an indispensable tool for learning how existing models are configured and for creating a template for custom models.4
+                     * ollama cp <source_model> <destination_model>: Creates a duplicate of an existing local model under a new name. This is useful for creating a versioned backup before making modifications with a new Modelfile.1
+                     * ollama rm <model>: Permanently deletes a model and its associated files from local storage, freeing up disk space.1
+
+
+4.2. Running Models
+
+
+The run command is the primary entry point for interacting with a model.
+                        * ollama run <model>: This command starts an interactive session with the specified model. If the model is not available locally, Ollama will automatically pull it first.1
+                        * Interactive Mode: Once a session is started, the user is presented with a >>> prompt. From here, you can chat with the model. Several special commands are available within this interactive mode 25:
+                        * /?: Displays a help menu of available commands.
+                        * /set <parameter> <value>: Temporarily changes an inference parameter for the current session. For example, /set parameter num_ctx 4096 adjusts the context window size.
+                        * /show info: Displays the current model's configuration details.
+                        * /exit: Exits the interactive session.
+                        * One-Shot Commands: For scripting and automation, prompts can be passed directly to the run command without entering an interactive session. The model's response is printed directly to standard output.2
+Bash
+# Pass a prompt as an argument
+ollama run mistral "Translate 'hello world' to French"
+
+# Pipe content from a file into the prompt
+ollama run mistral "Summarize the following text:" < article.txt
+
+                        * Multiline and Multimodal Input:
+                           * For multiline prompts, text can be wrapped in triple quotes (""").1
+Bash
+ollama run codellama """
+Write a Python function that takes a list of integers
+and returns a new list with only the even numbers.
+"""
+
+                           * For multimodal models like LLaVA, local file paths to images can be included directly in the prompt.1
+Bash
+ollama run llava "Describe this image in detail. /path/to/my/image.jpg"
+
+
+
+4.3. Model Creation
+
+
+                              * ollama create <name> -f./Modelfile: This command builds a new custom model. It requires a name for the new model and a path to a Modelfile using the -f flag. Ollama will process the instructions in the Modelfile to create the new model and add it to the local library.1
+
+
+4.4. Server and Process Management
+
+
+                              * ollama serve: Manually starts the Ollama API server. Under normal circumstances, this command is not needed, as Ollama runs as a background service. However, it can be useful for debugging or running the server with custom environment variables in a temporary shell.6
+                              * ollama ps: Similar to docker ps, this command lists the models that are currently loaded into memory and actively running. The output shows the model name, its ID, size, the processor it's using (CPU/GPU), and the time remaining until it is automatically unloaded from memory to free up resources.22
+
+
+Part 5: Customizing Models with Modelfile
+
+
+The Modelfile is the cornerstone of Ollama's customization capabilities. It provides a simple, declarative syntax for creating new models, modifying existing ones, and sharing configurations. This system acts as a "Dockerfile for LLMs," offering a lightweight yet powerful way to tailor a model's behavior without the need for resource-intensive fine-tuning.4
+
+
+5.1. Modelfile Anatomy and Syntax
+
+
+A Modelfile is a plain text file that contains a series of instructions for building a model.
+                              * Syntax: The format consists of an instruction followed by its arguments: INSTRUCTION argument. Instructions are case-insensitive, but by convention, they are written in uppercase for readability. Comments can be added using the # symbol.4
+                              * Workflow: The process of creating and using a custom model is straightforward 4:
+                              1. Create the Modelfile: In your project directory, create a new file named Modelfile. It is critical that this file has no extension (e.g., not Modelfile.txt).
+                              2. Define Instructions: Open the file in a text editor and add the desired configuration directives.
+                              3. Build the Model: Use the Ollama CLI to create the model: ollama create <model-name> -f./Modelfile.
+                              4. Run the Model: Interact with your new custom model: ollama run <model-name>.
+
+
+5.2. Core Directives
+
+
+These instructions form the basic structure of any Modelfile.
+                              * FROM (Required): This is the only mandatory instruction. It specifies the base model upon which the new model will be built. The source can be 1:
+                              * A model from the Ollama library: FROM llama3.2:1b
+                              * A local GGUF model file: FROM./vicuna-13b-v1.5.Q4_K_M.gguf
+                              * A local Safetensors model file.
+                              * SYSTEM: This directive sets a system-level prompt that defines the model's persona, constraints, or overall behavior. The content is injected into the model's prompt template.
+Code snippet
+SYSTEM "You are an expert C++ programmer. Provide clear, concise, and correct code examples. Always explain the reasoning behind your code."
+
+                              * TEMPLATE: This instruction defines the complete prompt template that structures the interaction with the model. It uses Go template syntax and is highly model-specific. The best practice is to copy the template from an existing, similar model using ollama show --modelfile <base-model>. Key variables include 33:
+                                 * {{.System }}: The content from the SYSTEM directive.
+                                 * {{.Prompt }}: The user's input.
+                                 * {{.Response }}: A placeholder for the model's generation.
+Code snippet
+TEMPLATE """ <<SYS>>{{.System }}<</SYS>> {{.Prompt }}"""
+
+                                 * MESSAGE: This instruction allows you to embed a sample conversation into the model's context. This can be used for few-shot prompting, guiding the model to respond in a specific format or style. Multiple MESSAGE lines can be used to build a conversation history.33
+Code snippet
+MESSAGE user "What is the capital of France?"
+MESSAGE assistant "The capital of France is Paris."
+
+                                 * LICENSE: Specifies the license under which the custom model is distributed.33
+
+
+5.3. Advanced Control with PARAMETER
+
+
+The PARAMETER directive sets the default inference parameters that will be used when the model is run. These control the randomness, creativity, and length of the model's output. The following table details the available parameters.
+Parameter
+	Description
+	Data Type
+	Default
+	Example
+	temperature
+	Controls creativity. Higher values (e.g., 1.0) make output more random, while lower values (e.g., 0.2) make it more deterministic.
+	float
+	0.8
+	PARAMETER temperature 0.7
+	num_ctx
+	Sets the context window size in tokens. This determines how much of the conversation history the model can "remember".
+	int
+	2048
+	PARAMETER num_ctx 4096
+	top_k
+	Restricts the model to sampling from the top k most likely next tokens. A value of 40 means only the 40 most probable tokens are considered.
+	int
+	40
+	PARAMETER top_k 50
+	top_p
+	Nucleus sampling. The model samples from the smallest set of tokens whose cumulative probability exceeds p. A value of 0.9 filters out the least likely tokens.
+	float
+	0.9
+	PARAMETER top_p 0.95
+	repeat_penalty
+	Sets how strongly to penalize repetitions. Higher values (e.g., 1.5) discourage repeating tokens.
+	float
+	1.1
+	PARAMETER repeat_penalty 1.2
+	repeat_last_n
+	How many tokens to look back for repetition penalty. 0 disables, -1 uses num_ctx.
+	int
+	64
+	PARAMETER repeat_last_n 256
+	seed
+	Sets the random seed for generation. Using a fixed seed ensures reproducible outputs for the same prompt.
+	int
+	0 (random)
+	PARAMETER seed 42
+	stop
+	A sequence of text that, when generated, will cause the model to stop. Can be specified multiple times for multiple stop sequences.
+	string
+	N/A
+	PARAMETER stop "User:"
+	num_predict
+	Maximum number of tokens to generate. -1 for infinite, -2 to fill context.
+	int
+	128
+	PARAMETER num_predict 1024
+	mirostat
+	Enables Mirostat sampling, an alternative to top_k/top_p that targets a specific level of perplexity. 0=disabled, 1=Mirostat, 2=Mirostat 2.0.
+	int
+	0
+	PARAMETER mirostat 2
+	mirostat_tau
+	The target perplexity for Mirostat. Controls the balance between coherence and diversity.
+	float
+	5.0
+	PARAMETER mirostat_tau 4.0
+	mirostat_eta
+	The learning rate for Mirostat.
+	float
+	0.1
+	PARAMETER mirostat_eta 0.2
+	min_p
+	Sets a minimum probability threshold for tokens relative to the most likely token.
+	float
+	0.0
+	PARAMETER min_p 0.05
+	
+
+5.4. Applying LoRA with ADAPTER
+
+
+The ADAPTER instruction applies a LoRA (Low-Rank Adaptation) adapter to the base model. LoRAs are small, fine-tuned weights that can modify a model's behavior for a specific task without altering the large base model.
+
+
+Code snippet
+
+
+
+
+FROM llama3.2
+ADAPTER./my-sql-lora-adapter.bin
+SYSTEM "You are a helpful assistant that translates natural language to SQL queries."
+
+The path to the adapter file must be absolute or relative to the Modelfile's location. The LoRA adapter must have been trained on the specified FROM model for predictable behavior.33
+
+
+5.5. Practical Example: Creating a "Code Review" Assistant
+
+
+This example demonstrates the full workflow for creating a specialized model.
+                                    1. Get the Base Modelfile: Start by inspecting the Modelfile of a suitable base model, such as codellama, and save it to a local file.
+Bash
+ollama show --modelfile codellama > Modelfile
+
+                                    2. Customize the Modelfile: Open the new Modelfile and edit it.
+Code snippet
+# Start with the 7B parameter Code Llama model
+FROM codellama:7b
+
+# Set a low temperature for more deterministic and factual reviews
+PARAMETER temperature 0.2
+
+# Increase the context window to handle larger code files
+PARAMETER num_ctx 8192
+
+# Define the model's persona and task
+SYSTEM """You are an expert code reviewer for Python.
+Your task is to analyze the provided code and identify potential bugs,
+suggest improvements for readability and performance, and check for
+adherence to PEP 8 style guidelines. Structure your feedback clearly
+with specific line numbers where applicable."""
+
+# The template can often be left as is from the base model
+TEMPLATE """ {{.System }}
+{{.Prompt }}"""
+
+                                    3. Build the Custom Model: Use the create command to build the new model.
+Bash
+ollama create python-code-reviewer -f./Modelfile
+
+                                    4. Test the Model: Run the newly created model and provide it with some code to review.
+Bash
+ollama run python-code-reviewer "Please review this Python function:
+def add(x,y):
+ result=x+y
+ return result"
+
+The model will now respond according to the specialized instructions defined in the SYSTEM prompt and use the specified PARAMETER values.
+
+
+Part 6: The Ollama REST API Reference
+
+
+The Ollama REST API is a simple yet powerful interface that allows developers to programmatically interact with local LLMs. It follows standard RESTful principles, using HTTP methods and JSON for communication, making it easy to integrate into any application or programming language.8
+
+
+6.1. API Fundamentals
+
+
+                                       * Base URL: By default, the Ollama server listens on http://localhost:11434. All API endpoints are relative to this base URL.6
+                                       * Content Type: All API requests with a body must have a Content-Type header of application/json. Responses are also returned in JSON format.6
+                                       * Streaming Responses: For generation endpoints (/api/generate, /api/chat), responses can be streamed. When streaming is enabled ("stream": true), the server sends a sequence of line-delimited JSON objects. Each object represents a piece of the generated response (e.g., a token). The final object in the stream will have the "done": true field set.6
+                                       * Local-First Security Model: The Ollama API is designed for local use and, by default, has no built-in authentication or authorization mechanisms. It operates on the assumption that it is running in a trusted environment. For deployments that are exposed to a network, it is essential to implement security measures using a reverse proxy.8
+The following table summarizes the primary endpoints available in the Ollama REST API.
+HTTP Method
+	Endpoint Path
+	Description
+	POST
+	/api/generate
+	Generates a response for a given prompt (single-turn completion).
+	POST
+	/api/chat
+	Generates the next message in a chat conversation (multi-turn).
+	POST
+	/api/embeddings
+	Generates numerical embeddings for a given prompt.
+	GET
+	/api/tags
+	Lists all local models (equivalent to ollama list).
+	POST
+	/api/show
+	Retrieves detailed information about a specific model.
+	POST
+	/api/copy
+	Creates a copy of an existing model.
+	DELETE
+	/api/delete
+	Deletes a model from local storage.
+	POST
+	/api/create
+	Creates a new model from a Modelfile provided in the request.
+	POST
+	/api/pull
+	Downloads a model from the Ollama library.
+	POST
+	/api/push
+	Uploads a model to a remote registry.
+	GET/HEAD
+	/api/blobs/{digest}
+	Checks if a model layer (blob) exists locally.
+	
+
+6.2. Generation Endpoints
+
+
+These endpoints are used for model inference.
+
+
+POST /api/generate (Completion)
+
+
+This endpoint is used for single-turn, stateless text generation.6
+                                       * Request Body:
+JSON
+{
+ "model": "llama3.2",
+ "prompt": "Why is the sky blue?",
+ "images":, // Optional: list of base64-encoded image strings
+ "format": "json", // Optional: "json" to enforce JSON output
+ "stream": false, // Optional: true for streaming response
+ "options": { // Optional: override Modelfile parameters
+   "temperature": 0.8,
+   "num_ctx": 4096
+ }
+}
+
+                                       * Response Body (Non-streaming):
+JSON
+{
+ "model": "llama3.2",
+ "created_at": "2023-08-04T19:22:45.499127Z",
+ "response": "The sky appears blue due to a phenomenon called Rayleigh scattering...",
+ "done": true,
+ "total_duration": 5468350167,
+ "load_duration": 223708,
+ "prompt_eval_count": 26,
+ "eval_count": 230,
+ "eval_duration": 5134382000
+}
+
+                                       * curl Example:
+Bash
+curl http://localhost:11434/api/generate -d '{
+ "model": "llama3.2",
+ "prompt": "Why is the sky blue?",
+ "stream": false
+}'
+
+
+
+POST /api/chat (Chat Completion)
+
+
+This endpoint is designed for multi-turn conversations, as it maintains the context of the dialogue.6
+                                          * Request Body: The messages array contains the conversation history. The role can be system, user, or assistant.36
+JSON
+{
+ "model": "mistral",
+ "messages":,
+ "stream": false
+}
+
+                                          * Response Body (Non-streaming):
+JSON
+{
+ "model": "mistral",
+ "created_at": "2023-08-04T19:23:42.182137Z",
+ "message": {
+   "role": "assistant",
+   "content": "The capital of France is Paris."
+ },
+ "done": true,
+ "total_duration": 3468350167,
+ "load_duration": 323708,
+ "prompt_eval_count": 46,
+ "eval_count": 130,
+ "eval_duration": 3134382000
+}
+
+                                          * curl Example:
+Bash
+curl http://localhost:11434/api/chat -d '{
+ "model": "mistral",
+ "messages": [
+   { "role": "user", "content": "Hello!" }
+ ]
+}'
+
+
+
+6.3. Model Management Endpoints
+
+
+These endpoints provide programmatic control over the local model library.
+                                             * GET /api/tags: Lists all locally available models.
+                                             * curl Example: curl http://localhost:11434/api/tags
+                                             * POST /api/show: Retrieves detailed information for a specific model.
+                                             * Request Body: {"name": "llama3.2"}
+                                             * curl Example: curl http://localhost:11434/api/show -d '{"name": "llama3.2"}'
+                                             * POST /api/copy: Copies a model.
+                                             * Request Body: {"source": "llama3.2", "destination": "my-llama-copy"}
+                                             * curl Example: curl http://localhost:11434/api/copy -d '{"source": "llama3.2", "destination": "my-llama-copy"}'
+                                             * DELETE /api/delete: Deletes a model.
+                                             * Request Body: {"name": "my-llama-copy"}
+                                             * curl Example: curl -X DELETE http://localhost:11434/api/delete -d '{"name": "my-llama-copy"}'
+                                             * POST /api/create: Creates a model from a Modelfile's contents.
+                                             * Request Body: {"name": "my-custom-model", "modelfile": "FROM llama3.2\nSYSTEM You are a poet."}
+                                             * curl Example: curl http://localhost:11434/api/create -d '{"name": "my-custom-model", "modelfile": "FROM llama3.2\nSYSTEM You are a poet."}'
+                                             * POST /api/pull: Downloads a model from the library.
+                                             * Request Body: {"name": "gemma:2b", "stream": false}
+                                             * curl Example: curl http://localhost:11434/api/pull -d '{"name": "gemma:2b"}'
+
+
+6.4. Embedding Generation
+
+
+
+
+POST /api/embeddings
+
+
+This endpoint generates vector embeddings (numerical representations) of a given prompt, which is essential for tasks like semantic search and Retrieval-Augmented Generation (RAG).36
+                                             * Request Body:
+JSON
+{
+ "model": "nomic-embed-text",
+ "prompt": "This is the text to be embedded."
+}
+
+                                             * Response Body:
+JSON
+{
+ "embedding": [0.5826834440231323, 0.2936834692955017,...]
+}
+
+                                             * curl Example:
+Bash
+curl http://localhost:11434/api/embeddings -d '{
+ "model": "nomic-embed-text",
+ "prompt": "Ollama is a tool for running LLMs locally."
+}'
+
+
+
+6.5. Security Considerations for Production
+
+
+When deploying Ollama in any environment that is accessible from a network, the default configuration is insecure. It is critical to place Ollama behind a reverse proxy (e.g., Nginx, Caddy, Traefik) to manage access and secure the API endpoint.
+The following best practices should be implemented 8:
+                                                1. Bind Ollama to Localhost: Configure Ollama to only listen on the local loopback interface by setting the OLLAMA_HOST environment variable to 127.0.0.1 or localhost. This prevents any direct external connections from bypassing the proxy.
+                                                2. Enforce HTTPS: The reverse proxy should be configured to handle SSL/TLS termination, encrypting all traffic between clients and the server.
+                                                3. Implement Authentication: Use the proxy's capabilities to require authentication for all API requests. Common methods include API keys passed in a header (e.g., X-Api-Key) or Bearer tokens (Authorization: Bearer <token>).
+                                                4. Apply Rate Limiting: To protect the service from denial-of-service attacks or abuse, configure rate limiting at the proxy level to restrict the number of requests a single client can make in a given time period.
+
+
+Part 7: Building Applications with Ollama
+
+
+While the CLI and REST API provide foundational tools for interacting with Ollama, dedicated libraries and framework integrations streamline the development of complex applications. This section covers the use of official Python and JavaScript libraries, as well as integrations with the popular LangChain and LlamaIndex frameworks.
+The design of Ollama's API, particularly its OpenAI compatibility, allows it to function as a "drop-in replacement" for cloud-based LLM providers.39 In high-level frameworks, switching an application from using a service like OpenAI to a local Ollama instance is often a one-line code change. This commoditizes local inference, making private, secure, and free LLM backends readily swappable into existing AI engineering patterns, which is a significant advantage for developers.
+
+
+7.1. Official Libraries: Python & JavaScript
+
+
+Ollama provides official client libraries for Python and JavaScript, which offer a more convenient and idiomatic way to interact with the REST API than making raw HTTP requests.1
+                                                * Installation:
+                                                * Python: pip install ollama 13
+                                                * JavaScript/TypeScript: npm install ollama 13
+                                                * Python Usage Examples 13:
+                                                * Simple Chat:
+Python
+import ollama
+response = ollama.chat(
+   model='llama3.2',
+   messages=
+)
+print(response['message']['content'])
+
+                                                * Streaming Response:
+Python
+import ollama
+stream = ollama.chat(
+   model='mistral',
+   messages=,
+   stream=True
+)
+for chunk in stream:
+   print(chunk['message']['content'], end='', flush=True)
+
+                                                * Multimodal Input:
+Python
+import ollama
+with open('image.png', 'rb') as file:
+   response = ollama.chat(
+       model='llava',
+       messages=
+       }]
+   )
+print(response['message']['content'])
+
+                                                * Embedding Generation:
+Python
+import ollama
+embedding = ollama.embeddings(
+   model='nomic-embed-text',
+   prompt='This is text to be embedded.'
+)
+print(embedding['embedding'])
+
+                                                   * JavaScript Usage Example 13:
+JavaScript
+import ollama from 'ollama'
+
+const response = await ollama.chat({
+ model: 'llama3.2',
+ messages:,
+})
+console.log(response.message.content)
+
+
+
+7.2. Integration with LangChain
+
+
+LangChain is a powerful framework for developing applications powered by LLMs, enabling the creation of complex chains, agents, and RAG systems.7 Its integration with Ollama allows developers to leverage local models within these sophisticated workflows.
+                                                      * Setup: The langchain-ollama package provides the necessary integration classes.
+Bash
+pip install langchain-ollama
+
+                                                      * Core Components: The integration exposes three main classes 3:
+                                                         * ChatOllama: For interacting with chat-based models.
+                                                         * OllamaLLM: For interacting with older, text-completion models.
+                                                         * OllamaEmbeddings: For generating embeddings.
+                                                         * Usage Example (Simple Chain): This example demonstrates how to create a simple chain that combines a prompt template with an Ollama model.
+Python
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_ollama.chat_models import ChatOllama
+
+# 1. Instantiate the Ollama model
+llm = ChatOllama(model="llama3.2")
+
+# 2. Create a prompt template
+prompt = ChatPromptTemplate.from_messages()
+
+# 3. Create the chain by piping the components together
+chain = prompt | llm
+
+# 4. Invoke the chain with input
+response = chain.invoke({"city": "Paris"})
+
+print(response.content)
+
+
+
+7.3. Integration with LlamaIndex
+
+
+LlamaIndex is a specialized framework designed for building robust and production-ready Retrieval-Augmented Generation (RAG) applications. It excels at connecting LLMs to external, private data sources.41
+                                                            * Setup: LlamaIndex requires separate packages for the LLM and embedding model integrations.
+Bash
+pip install llama-index-llms-ollama llama-index-embeddings-ollama
+
+                                                            * RAG Workflow Example: This example demonstrates a complete RAG pipeline that answers questions based on the content of local text files.
+                                                               1. Prepare Data: Create a directory named data and place one or more text files inside it.
+                                                               2. Build the RAG Application:
+Python
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
+from llama_index.llms.ollama import Ollama
+from llama_index.embeddings.ollama import OllamaEmbedding
+
+# 1. Configure the LLM and embedding model to use Ollama
+Settings.llm = Ollama(model="llama3.1")
+Settings.embed_model = OllamaEmbedding(model_name="nomic-embed-text")
+
+# 2. Load documents from the 'data' directory
+print("Loading documents...")
+documents = SimpleDirectoryReader("./data").load_data()
+print(f"Loaded {len(documents)} document(s).")
+
+# 3. Create an index from the documents
+# This will use the OllamaEmbedding model to create vectors for the text
+print("Creating index...")
+index = VectorStoreIndex.from_documents(documents)
+print("Index created successfully.")
+
+# 4. Create a query engine from the index
+query_engine = index.as_query_engine()
+
+# 5. Query the data
+# LlamaIndex retrieves relevant context and passes it to the Ollama LLM
+print("Querying the index...")
+response = query_engine.query("What is the main topic discussed in the documents?")
+
+print("\nResponse:")
+print(response)
+
+This code demonstrates the end-to-end RAG process: loading data, converting it into numerical embeddings using a local Ollama model, storing it in a vector index, and then using another local Ollama LLM to synthesize an answer based on retrieved context.
+
+
+Part 8: The Broader Ollama Ecosystem
+
+
+The simplicity and power of Ollama's local-first approach have fostered a vibrant ecosystem of community-driven tools and applications that extend its core functionality. These range from sophisticated graphical user interfaces to libraries for a wide array of programming languages.
+
+
+8.1. Graphical User Interfaces (GUIs)
+
+
+While the CLI is powerful for developers, GUIs provide a more accessible and user-friendly way to interact with models.
+                                                                  * Open WebUI: This is one of the most popular and feature-rich frontends for Ollama. It provides a polished, ChatGPT-like interface that runs in a web browser.43 Key features include:
+                                                                  * Easy Deployment: It is most commonly deployed as a Docker container, often alongside Ollama using Docker Compose.28
+                                                                  * RAG Capabilities: Users can upload documents directly into the chat interface. By using the # command followed by a query, Open WebUI performs RAG on the uploaded documents to provide context-aware answers.43
+                                                                  * Web Browsing: The interface can be instructed to browse a URL and use its content as context for a query, also using the # command.43
+                                                                  * Image Generation: It can integrate with image generation backends like AUTOMATIC1111 (for Stable Diffusion) or DALL-E, allowing users to generate images from within the chat.43
+                                                                  * Multi-User Support: Open WebUI includes Role-Based Access Control (RBAC), making it suitable for small team deployments where administrators can manage user permissions and access to models.43
+                                                                  * PWA for Mobile: It can be installed as a Progressive Web App on mobile devices for a native-like experience.43
+                                                                  * Ollami: Another frontend option, Ollami is a more lightweight application designed for quick and simple chat interactions with local models. It provides a built-in library of available models that can be downloaded and run directly from the interface.11
+
+
+8.2. Community Libraries and Tools
+
+
+The core Ollama project is enhanced by a wide range of contributions from the open-source community.
+                                                                  * Expanded Language Support: While official libraries exist for Python and JavaScript, the community has developed and maintains client libraries for many other programming languages, including Dart, Swift, C#, Java, PHP, and Rust. A comprehensive list of these libraries is maintained in the Ollama community resources.13
+                                                                  * Remote CLI Management: For users who run Ollama on a dedicated server (e.g., a home server or a cloud VM), tools have been developed to manage it remotely. One such tool is ollama-cli by masgari, which is a standalone CLI that can connect to and manage remote Ollama instances without requiring a local Ollama installation. This allows a developer to manage models on their server directly from their personal laptop.44
+
+
+Conclusions
+
+
+Ollama has firmly established itself as a pivotal tool in the democratization of large language models. Its success stems from a deliberate and effective architectural philosophy that prioritizes simplicity and accessibility. By abstracting the complexities of model setup and hardware optimization into a self-contained, appliance-like application, Ollama empowers developers to run powerful, state-of-the-art AI models on local hardware with minimal friction. This approach lowers the barrier to entry, enabling a wider range of developers, researchers, and enthusiasts to experiment with and build upon open-source AI.
+The analysis of its setup and configuration reveals a significant strategic consideration related to hardware. The user experience with NVIDIA GPUs is remarkably streamlined, reflecting the maturity of the CUDA ecosystem. In contrast, the path for AMD GPU users, while viable, often requires manual intervention and a deeper level of system configuration. This disparity underscores that the choice of hardware is not merely a performance decision but a strategic one that impacts development time and setup complexity. For developers seeking the most direct path to productivity, NVIDIA remains the more pragmatic option.
+For reproducible and platform-agnostic development, containerization with Docker emerges as the superior deployment strategy. It provides a consistent environment across different operating systems, simplifying collaboration and ensuring that applications behave predictably from development to deployment. The combination of Ollama and Docker Compose, particularly for managing multi-service applications with frontends like Open WebUI, represents a best practice for serious development workflows.
+Finally, in the broader application development landscape, Ollama's role is that of a commodity backend. Its official libraries and, more importantly, its OpenAI-compatible API endpoint, allow it to serve as a seamless, drop-in replacement for cloud-based LLM services. This enables developers to build applications using established frameworks like LangChain and LlamaIndex and then switch between local and cloud-based models with minimal code changes. This flexibility commoditizes LLM inference, granting developers unprecedented control over their data privacy, operational costs, and choice of model, thereby solidifying Ollama's position as a foundational component in the modern AI development stack.
+Works cited
+                                                                  1. ollama/ollama: Get up and running with OpenAI gpt-oss ... - GitHub, accessed September 15, 2025, https://github.com/ollama/ollama
+                                                                  2. Ollama Commands Cheat Sheet - Quick Reference 2025 - BytePlus, accessed September 15, 2025, https://www.byteplus.com/en/topic/418078
+                                                                  3. Ollama - ️ LangChain, accessed September 15, 2025, https://python.langchain.com/docs/integrations/providers/ollama/
+                                                                  4. Ollama Modelfile Documentation: Guide & Syntax 2025 - BytePlus, accessed September 15, 2025, https://www.byteplus.com/en/topic/497090
+                                                                  5. Windows preview · Ollama Blog, accessed September 15, 2025, https://ollama.com/blog/windows-preview
+                                                                  6. Ollama REST API | Documentation | Postman API Network, accessed September 15, 2025, https://www.postman.com/postman-student-programs/ollama-api/documentation/suc47x8/ollama-rest-api
+                                                                  7. Ollama and LangChain: Run LLMs locally | by Abonia Sojasingarayar - Medium, accessed September 15, 2025, https://medium.com/@abonia/ollama-and-langchain-run-llms-locally-900931914a46
+                                                                  8. Ollama REST API Documentation & Postman API Network - BytePlus, accessed September 15, 2025, https://www.byteplus.com/en/topic/418061
+                                                                  9. library - Ollama, accessed September 15, 2025, https://ollama.com/library
+                                                                  10. LangChain Ollama Integration: Complete Tutorial with Examples - Latenode, accessed September 15, 2025, https://latenode.com/blog/langchain-ollama-integration-complete-tutorial-with-examples
+                                                                  11. Ollami is a frontend for Ollama, allowing user to quickly chat with their local model. - GitHub, accessed September 15, 2025, https://github.com/aetaix/ollami
+                                                                  12. Running Ollama on Ubuntu with an Unsupported AMD GPU: A Performance Guide, accessed September 15, 2025, https://www.conroyp.com/articles/running-ollama-ubuntu-unsupported-amd-gpu-performance-guide
+                                                                  13. Python & JavaScript Libraries · Ollama Blog, accessed September 15, 2025, https://ollama.com/blog/python-javascript-libraries
+                                                                  14. OllamaLLM - ️ LangChain, accessed September 15, 2025, https://python.langchain.com/docs/integrations/llms/ollama/
+                                                                  15. Run Ollama with NVIDIA GPU in Proxmox VMs and LXC containers - Virtualization Howto, accessed September 15, 2025, https://www.virtualizationhowto.com/2025/05/run-ollama-with-nvidia-gpu-in-proxmox-vms-and-lxc-containers/
+                                                                  16. Docker Image - ollama, accessed September 15, 2025, https://hub.docker.com/r/ollama/ollama
+                                                                  17. Setting Up Ollama With Docker [With NVIDIA GPU] - It's FOSS, accessed September 15, 2025, https://itsfoss.com/ollama-docker/
+                                                                  18. How to Install and Run Ollama with Docker: A Beginner's Guide - Collabnix, accessed September 15, 2025, https://collabnix.com/getting-started-with-ollama-and-docker/
+                                                                  19. Ollama GPU Acceleration: The Ultimate NVIDIA CUDA and AMD ROCm Configuration Guide for Production AI Deployment - Collabnix, accessed September 15, 2025, https://collabnix.com/ollama-gpu-acceleration-the-ultimate-nvidia-cuda-and-amd-rocm-configuration-guide-for-production-ai-deployment/
+                                                                  20. How to enable GPU support in Ollama? : r/NixOS - Reddit, accessed September 15, 2025, https://www.reddit.com/r/NixOS/comments/1atxzpe/how_to_enable_gpu_support_in_ollama/
+                                                                  21. Run Ollama on AMD GPUs | The Ultimate Linux Setup Guide - Arsturn, accessed September 15, 2025, https://www.arsturn.com/blog/running-ollama-on-amd-gpus-the-ultimate-linux-guide
+                                                                  22. Ollama Running on AMD GPUs - Random Linux Thoughts, accessed September 15, 2025, https://blog.syddel.uk/?p=625
+                                                                  23. How to run hardware accelerated Ollama on integrated GPU, like Radeon 780M on Linux., accessed September 15, 2025, https://www.reddit.com/r/LocalLLaMA/comments/1j3789k/how_to_run_hardware_accelerated_ollama_on/
+                                                                  24. So I just finished setting up Ollama with ROCm for my 7735HS / Radeon 680M iGPU (gfx1035) - Reddit, accessed September 15, 2025, https://www.reddit.com/r/ollama/comments/1gu3akj/so_i_just_finished_setting_up_ollama_with_rocm/
+                                                                  25. Ollama commands: How to use Ollama in the command line [Part 2] - Geshan's Blog, accessed September 15, 2025, https://geshan.com.np/blog/2025/02/ollama-commands/
+                                                                  26. How enable AMD GPU support for ollama / Newbie Corner / Arch Linux Forums, accessed September 15, 2025, https://bbs.archlinux.org/viewtopic.php?id=292371
+                                                                  27. How to use Ollama and Open WebUI with Docker Compose [Part 4] - Geshan's Blog, accessed September 15, 2025, https://geshan.com.np/blog/2025/02/ollama-docker-compose/
+                                                                  28. Setting Up Ollama with Open-WebUI: A Docker Compose Guide - Archy.net, accessed September 15, 2025, https://www.archy.net/setting-up-ollama-with-open-webui-a-docker-compose-guide/
+                                                                  29. mythrantic/ollama-docker: Welcome to the Ollama Docker Compose Setup! This project simplifies the deployment of Ollama using Docker Compose, making it easy to run Ollama with all its dependencies in a containerized environment - GitHub, accessed September 15, 2025, https://github.com/mythrantic/ollama-docker
+                                                                  30. codeup - Ollama, accessed September 15, 2025, https://ollama.com/library/codeup
+                                                                  31. Ollama Cheatsheet - Rost Glukhov | Personal site and technical blog, accessed September 15, 2025, https://www.glukhov.org/post/2024/12/ollama-cheatsheet/
+                                                                  32. How to Customize LLM Models with Ollama's Modelfile - GPU Mart, accessed September 15, 2025, https://www.gpu-mart.com/blog/custom-llm-models-with-ollama-modelfile
+                                                                  33. Modelfile Reference - Ollama English Documentation, accessed September 15, 2025, https://ollama.readthedocs.io/en/modelfile/
+                                                                  34. docs/modelfile.md · bruce/iq-quants - Ollama - GitLab, accessed September 15, 2025, https://gitlab.informatik.uni-halle.de/ambcj/ollama/-/blob/bruce/iq-quants/docs/modelfile.md
+                                                                  35. Customizing Large Language Models | Towards Data Science, accessed September 15, 2025, https://towardsdatascience.com/customizing-large-language-models-612bbe13bb20/
+                                                                  36. API Reference - Ollama English Documentation, accessed September 15, 2025, https://ollama.readthedocs.io/en/api/
+                                                                  37. Exploring Ollama REST API Endpoints | by Kevinnjagi - Medium, accessed September 15, 2025, https://medium.com/@kevinnjagi83/exploring-ollama-rest-api-endpoints-7029fae5630d
+                                                                  38. Ollama.API - HexDocs, accessed September 15, 2025, https://hexdocs.pm/ollama/0.3.0/Ollama.API.html
+                                                                  39. Ollama Observability and Tracing for local LLMs using Langfuse, accessed September 15, 2025, https://langfuse.com/integrations/model-providers/ollama
+                                                                  40. langchain-ollama - PyPI, accessed September 15, 2025, https://pypi.org/project/langchain-ollama/
+                                                                  41. Build RAG Application Using a LLM Running on Local Computer with Ollama Llama2 and LlamaIndex | by (λx.x)eranga | Effectz.AI | Medium, accessed September 15, 2025, https://medium.com/rahasak/build-rag-application-using-a-llm-running-on-local-computer-with-ollama-and-llamaindex-97703153db20
+                                                                  42. Starter Tutorial (Using Local LLMs) - LlamaIndex, accessed September 15, 2025, https://docs.llamaindex.ai/en/stable/getting_started/starter_example_local/
+                                                                  43. open-webui/open-webui: User-friendly AI Interface (Supports Ollama, OpenAI API, ...) - GitHub, accessed September 15, 2025, https://github.com/open-webui/open-webui
+                                                                  44. masgari/ollama-cli: A simple CLI tool for interacting with multiple remote Ollama servers, no Ollama installation required - GitHub, accessed September 15, 2025, https://github.com/masgari/ollama-cli

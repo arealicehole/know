@@ -1,0 +1,306 @@
+{
+  "objective": "Plan dual RTX 3090 (~42-44GB usable) homelab serving of Qwen3.8-27B for multiple Hermes Agent profiles on ONE OpenAI-compatible endpoint with ~256K context, continuous batching, full-GPU weights, open-source stack, reliable tool calling.",
+  "summary": "WINNER: SGLang TP=2 with cyankiwi AWQ-INT4 weights + fp8_e4m3 KV for multi-Hermes continuous batching and ~245k–256k class context. 0xSero's validated dual-3090 container is the best Phase-1 throughput recipe (~113 tok/s decode) but only ~64k max context with BF16 KV (~119k token pool)—extend it with fp8 KV for the 256k goal. Fallback A: llama.cpp AD-Q4/Q5 + q4_0 KV + MTP for true 262144 single-stream. Fallback B: vLLM TP2 continuous batch. Reject EXL3 as day-1 multi-tenant (batch-1 queue). Ampere rule: AWQ-INT4 Marlin beats FP8 weight compute; FP8 remains useful for KV. Hermes: --tool-call-parser qwen3_coder --reasoning-parser qwen3; enable_thinking false for stable tools.",
+  "executive_recommendation": [
+    "Primary engine: SGLang TP=2 continuous batch on 2x RTX 3090",
+    "Primary weights: cyankiwi/Qwen3.8-27B-AWQ-INT4 (W4A16 Marlin)",
+    "256k path: --kv-cache-dtype fp8_e4m3 --context-length 245760..262144 (community dual-3090 validated 245760)",
+    "Phase-1 soak: 0xSero ghcr container TP=2 (64k class, ~113 t/s) then promote long-ctx flags",
+    "Do not use BF16 KV if 256k is mandatory on 2x24GB",
+    "llama.cpp 262k q4KV+MTP = long-ctx sidecar / low concurrency",
+    "vLLM TP2 = strong alternate continuous batch",
+    "EXL3+DFlash2 = experimental single-stream only",
+    "One endpoint :8088 for all Hermes profiles; size shared token pool not Nx256k",
+    "max-running-requests start 4; client timeouts 600-1800s",
+    "Parsers: qwen3_coder + qwen3; thinking off for tool loops day-1",
+    "No CPU weight offload; PL 275W; watch 32GB host RAM at load"
+  ],
+  "winner": {
+    "id": 2,
+    "name": "SGLang TP2 continuous batch (AWQ-INT4 + fp8 KV)",
+    "runners_up": [
+      "llama.cpp 262k q4KV+MTP (best native 262k, weak multi-tenant)",
+      "vLLM TP2 continuous batch (strong alternate)",
+      "EXL3 256k experimental (reject multi-tenant day-1)"
+    ]
+  },
+  "vram_bom_primary": {
+    "config": "SGLang TP2 AWQ-INT4 + fp8 KV ~245k-256k",
+    "usable_vram_gb": "42-44",
+    "rows": [
+      {"component": "AWQ-INT4 weights", "gb": "15-19 total (~9.5/GPU TP2)", "notes": "0xSero ~19GB AWQ class"},
+      {"component": "Optional DSpark draft", "gb": "~2.6", "notes": "disable if KV tight"},
+      {"component": "Graphs/workspace", "gb": "2-4 per GPU", "notes": "disable prefill cuda graph on TP2"},
+      {"component": "GDN/mamba state", "gb": "1+", "notes": "limits concurrency separately from KV"},
+      {"component": "KV pool fp8", "gb": "remainder ~12-18 total", "notes": "required for 200-256k"},
+      {"component": "KV pool bf16 (reference)", "tokens": 118693, "max_ctx": 64000, "notes": "0xSero TP2 measured — insufficient for 256k seq"}
+    ],
+    "concurrency_sketch": {
+      "at_256k": 1,
+      "at_64k": "3-4",
+      "at_32k": "6-8",
+      "at_8k_16k_hermes": "10-20 if pool>=200k and GDN allows"
+    }
+  },
+  "candidate_commands": {
+    "sglang_primary_long_ctx": "python -m sglang.launch_server --model-path /models/cyankiwi-Qwen3.8-27B-AWQ-INT4 --served-model-name Qwen3.8-27B --host 0.0.0.0 --port 8088 --tp-size 2 --quantization compressed-tensors --mem-fraction-static 0.80 --kv-cache-dtype fp8_e4m3 --chunked-prefill-size 8192 --context-length 245760 --dtype bfloat16 --mamba-ssm-dtype bfloat16 --disable-custom-all-reduce --enable-tf32-matmul --schedule-policy lpm --trust-remote-code --tool-call-parser qwen3_coder --reasoning-parser qwen3 --max-running-requests 4 --allow-auto-truncate --cuda-graph-backend-prefill disabled --stream-interval 1",
+    "sglang_0xsero_phase1": "docker run --gpus all --shm-size 32g -p 8088:8000 -v /models/qwen38:/models -e TP=2 ghcr.io/0xsero/qwen38-3090-sglang@sha256:cc2bfc369c709c53d239ef2af41d4ae2530904975816bb2ca484188008586ac9",
+    "llamacpp_262k_fallback": "llama-server -m /models/Qwen3.8-27B-AD-Q4_K_M.gguf -c 262144 -ngl 999 -fa 1 --split-mode tensor --tensor-split 1,1 --cache-type-k q4_0 --cache-type-v q4_0 --spec-type draft-mtp --spec-draft-n-max 2 --parallel 1 --host 0.0.0.0 --port 8088 --jinja",
+    "vllm_tp2_alt": "vllm serve cyankiwi/Qwen3.8-27B-AWQ-INT4 --host 0.0.0.0 --port 8088 --tensor-parallel-size 2 --max-model-len 131072 --gpu-memory-utilization 0.90 --kv-cache-dtype fp8 --enable-chunked-prefill --enable-prefix-caching --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3"
+  },
+  "hf_github_ids": {
+    "upstream": "Qwen/Qwen3.8-27B",
+    "awq_int4": "cyankiwi/Qwen3.8-27B-AWQ-INT4",
+    "dspark": "RadixArk/Qwen3.8-27B-DSpark",
+    "autoround": "MIRALABS/Qwen3.8-27B-W4A16-AutoRound",
+    "fp8_weights": "Qwen/Qwen3.8-27B-FP8",
+    "atomic_gguf": "AtomicChat/Qwen3.8-27B-GGUF",
+    "unsloth_gguf": "unsloth/Qwen3.8-27B-GGUF",
+    "exl3_target": "Mia-AiLab/Qwen3.8-27B-EXL3-3.5bpw",
+    "exl3_dflash2": "Mia-AiLab/Qwen3.8-27B-DFlash2-EXL3-5.0bpw",
+    "repos": [
+      "https://github.com/0xSero/qwen38-3090-sglang",
+      "https://github.com/sudoingX/qwen38-mtp",
+      "https://github.com/syv-ai/qwen38-27b-rtx3090",
+      "https://github.com/TIANWENtianw/qwen3.8-27b-vllm-deployment",
+      "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B"
+    ],
+    "atomic_sizes_bytes": {
+      "AD-Q4_K_M": 17120781792,
+      "AD-Q5_K_M": 20232512992,
+      "AD-Q6_K": 25005438432,
+      "Q8_0": 28887832032
+    }
+  },
+  "multi_hermes_concurrency_policy": {
+    "endpoint": "http://ai-box:8088/v1",
+    "max_running_requests_start": 4,
+    "max_running_requests_stretch": "8-16",
+    "default_client_ctx": "32k-64k",
+    "long_ctx_profiles": 1,
+    "client_timeout_s": {"normal": 600, "long_prefill": 1800},
+    "thinking_default_for_tools": false,
+    "engine": "SGLang primary / vLLM alternate — not EXL3, not llama.cpp as multi-tenant primary"
+  },
+  "risks_unknowns": [
+    "Blackwell/Spark NVFP4 and sm_120 cookbooks do not transfer to sm_86",
+    "0xSero BF16 TP2 is 64k not 256k; long-ctx needs fp8 KV verification on this chassis",
+    "FP8 KV quality at 200k+ agent tool JSON needs local NIAH/tool soak",
+    "GDN/mamba state caps concurrency independent of KV tokens",
+    "Thinking+tools parser bugs (SGLang #36537 family; empty content)",
+    "32GB host RAM thrash risk during load",
+    "PCIe TP without NVLink; optional P2P kernel",
+    "PL 275W lower than many published benches",
+    "Speculative decoding hurts multi-tenant KV headroom"
+  ],
+  "verification_checklist": [
+    "nvidia-smi both GPUs + PL 275",
+    "server boot both GPUs VRAM occupied, no CPU weight offload",
+    "GET /v1/models",
+    "short chat enable_thinking false",
+    "parallel 5-10 requests continuous batch",
+    "200-256k prefill when free",
+    "tool-call smoke OpenAI tools array",
+    "metrics KV util + running requests"
+  ],
+  "phased_deploy": [
+    {"phase": "P0", "action": "inventory driver/CUDA/P2P/disk/headless"},
+    {"phase": "P1", "action": "0xSero TP2 container :8088 64k soak"},
+    {"phase": "P2", "action": "one Hermes profile tool+thinking flags"},
+    {"phase": "P3", "action": "fp8 KV context-length 200k-245760"},
+    {"phase": "P4", "action": "5-10 multi-profile concurrency policy"},
+    {"phase": "P5", "action": "optional llama.cpp 262k sidecar :8089"},
+    {"phase": "P6", "action": "systemd healthchecks PL275"},
+    {"phase": "P7", "action": "keep EXL3 research-only"}
+  ],
+  "tradeoff_table": [
+    {"option": 1, "name": "llama.cpp 262k q4KV+MTP", "ctx_256k": "best native 262k", "multi_batch": "weak", "verdict": "fallback/sidecar"},
+    {"option": 2, "name": "SGLang TP2 continuous batch", "ctx_256k": "yes with fp8 KV (~245k shown)", "multi_batch": "best", "verdict": "WINNER"},
+    {"option": 3, "name": "EXL3 256k experimental", "ctx_256k": "yes Hadamard-4", "multi_batch": "fails batch-1", "verdict": "research only"},
+    {"option": 4, "name": "vLLM TP2", "ctx_256k": "likely 128k-256k with KV quant", "multi_batch": "strong", "verdict": "strong alternate"}
+  ],
+  "claims": [
+    {
+      "claim_id": "C1",
+      "statement": "0xSero SGLang TP=2 on 2x3090 with AWQ-INT4 delivers ~112.9 tok/s single-stream decode at 8k, ~1480 prefill class, max context 64k with BF16 KV pool ~118693 tokens.",
+      "evidence_refs": ["E1"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C2",
+      "statement": "On Ampere sm_86, AWQ INT4 W4A16 Marlin is preferred over FP8 weight formats for decode speed because there are no FP8 tensor cores; FP8 mainly saves memory with dequant overhead.",
+      "evidence_refs": ["E1", "E5"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C3",
+      "statement": "llama.cpp --cache-type-k/v q4_0 enables full ~262k context beside Q4-class weights on 24GB-class cards (~22.2GB cited); without KV quant context fails past ~90k.",
+      "evidence_refs": ["E2"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C4",
+      "statement": "llama.cpp draft-mtp speculative decoding is primarily a single-stream optimization; advantage is largely gone by --parallel 4.",
+      "evidence_refs": ["E2"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C5",
+      "statement": "Community dual RTX 3090 SGLang launch has demonstrated --context-length 245760 with cyankiwi AWQ-INT4, TP=2, and --kv-cache-dtype fp8_e4m3 plus qwen3_coder/qwen3 parsers.",
+      "evidence_refs": ["E3"],
+      "confidence": "medium",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C6",
+      "statement": "MiaAI EXL3+DFlash2/MTP path serves OpenAI API and can target 262k on 24GB with Hadamard-4 KV on Ampere, but generation is batch-1 (concurrent requests queue).",
+      "evidence_refs": ["E4"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C7",
+      "statement": "For Hermes/Qwen3.x local serve, use tool-call-parser qwen3_coder and reasoning-parser qwen3; empty content can occur with thinking/reasoning-parser interactions—disable enable_thinking for tool-heavy loops or raise max_tokens.",
+      "evidence_refs": ["E3", "E6", "E7"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C8",
+      "statement": "For multiple Hermes profiles on one endpoint, SGLang or vLLM continuous batching matches goals better than llama.cpp parallel slots or EXL3 batch-1.",
+      "evidence_refs": ["E1", "E8", "E4"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C9",
+      "statement": "Operator bookmark of ~1.2M token capacity should not be read as measured 2x3090 BF16 KV capacity; 0xSero TP2 measured ~119k BF16 pool (larger pools appear on higher TP or fp8 KV configs).",
+      "evidence_refs": ["E1"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C10",
+      "statement": "AtomicChat AD-Q4_K_M is ~17.12GB; AD-Q5_K_M ~20.23GB; AD-Q6_K ~25.01GB; Q8_0 ~28.89GB.",
+      "evidence_refs": ["E9"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C11",
+      "statement": "vLLM can serve long Qwen3.8-27B contexts on 3090-class hardware (syv-ai single-3090 150k-245k kits; TIANWENtianw 4x3090 FP8 max-model-len 262144 with NCCL_P2P_DISABLE).",
+      "evidence_refs": ["E8", "E5"],
+      "confidence": "high",
+      "status": "supported"
+    }
+  ],
+  "evidence_index": [
+    {
+      "evidence_id": "E1",
+      "source_label": "0xSero/qwen38-3090-sglang README",
+      "source_url": "https://github.com/0xSero/qwen38-3090-sglang",
+      "provenance": "github_raw_readme curl 2026-09-13",
+      "excerpt": "2x3090 DSpark: KV pool 118693 bf16, max context 64k, decode 112.9 t/s @8k c1; AWQ INT4 beats FP8 on Ampere; disable-prefill-cuda-graph on TP1/TP2"
+    },
+    {
+      "evidence_id": "E2",
+      "source_label": "sudoingX/qwen38-mtp README",
+      "source_url": "https://github.com/sudoingX/qwen38-mtp",
+      "provenance": "github_raw_readme curl 2026-09-13",
+      "excerpt": "cache-type-k/v q4_0 enables full 262k on 24GB at ~22.2GB with Q4 weights; without KV quant fails ~90k; draft-mtp; parallel 1 for MTP gains; tensor split on multi-GPU"
+    },
+    {
+      "evidence_id": "E3",
+      "source_label": "DEV dual 3090 WSL2 SGLang pitfalls",
+      "source_url": "https://dev.to/digitalmarket-world/i-got-qwen38-27b-running-on-dual-rtx-3090s-no-nvlink-under-wsl2-every-pitfall-i-hit-3oao",
+      "provenance": "web_search snippet 2026-09-13 (full page firecrawl 403)",
+      "excerpt": "sglang launch tp-size 2 AWQ-INT4 kv-cache-dtype fp8_e4m3 context-length 245760 tool-call-parser qwen3_coder reasoning-parser qwen3"
+    },
+    {
+      "evidence_id": "E4",
+      "source_label": "MiaAI EXL3 DFlash2 README",
+      "source_url": "https://github.com/MiaAI-Lab (DFlash2-EXL3-5.0bpw kit)",
+      "provenance": "github_raw_readme curl 2026-09-13",
+      "excerpt": "batch-1 speculative server queues concurrent requests; Ampere CACHE_QUANT=4 not nvfp4; 262k math with ~4.5bit KV; tools work; always reasons / enable_thinking ignored"
+    },
+    {
+      "evidence_id": "E5",
+      "source_label": "TIANWENtianw vLLM 4x3090 FP8 deploy",
+      "source_url": "https://github.com/TIANWENtianw/qwen3.8-27b-vllm-deployment",
+      "provenance": "github_raw_readme curl 2026-09-13",
+      "excerpt": "4x3090 FP8 max-model-len 262144; 3090 no native FP8 TC uses Marlin W8A16; NCCL_P2P_DISABLE=1"
+    },
+    {
+      "evidence_id": "E6",
+      "source_label": "Hermes Agent providers docs",
+      "source_url": "https://hermes-agent.nousresearch.com/docs/integrations/providers",
+      "provenance": "web_search snippet 2026-09-13",
+      "excerpt": "If reasoning-parser qwen3 leaves content empty, disable parser or pass chat_template_kwargs.enable_thinking false via extra_body"
+    },
+    {
+      "evidence_id": "E7",
+      "source_label": "SGLang issue 36537",
+      "source_url": "https://github.com/sgl-project/sglang/issues/36537",
+      "provenance": "github api json 2026-09-13",
+      "excerpt": "Qwen3.8 thinking + qwen3_coder tool parser high-priority bug class (loops/token issues on related Flash-Next path)"
+    },
+    {
+      "evidence_id": "E8",
+      "source_label": "syv-ai qwen38-27b-rtx3090",
+      "source_url": "https://github.com/syv-ai/qwen38-27b-rtx3090",
+      "provenance": "github_raw_readme curl 2026-09-13",
+      "excerpt": "single 3090 vLLM batch mode high concurrent tok/s; single-user DFlash2; CTX huge ~245k KVarN; continuous batch for API backends"
+    },
+    {
+      "evidence_id": "E9",
+      "source_label": "AtomicChat Qwen3.8-27B-GGUF tree",
+      "source_url": "https://huggingface.co/AtomicChat/Qwen3.8-27B-GGUF",
+      "provenance": "HF API tree json dump atomic-tree.json 2026-09-13",
+      "excerpt": "AD-Q4_K_M 17120781792 bytes; AD-Q5_K_M 20232512992; AD-Q6_K 25005438432; Q8_0 28887832032"
+    },
+    {
+      "evidence_id": "E10",
+      "source_label": "SGLang Qwen3.8-27B cookbook",
+      "source_url": "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B",
+      "provenance": "web_search snippet 2026-09-13",
+      "excerpt": "cookbook pins; FP8 KV auto for some RadixArk checkpoints; hybrid GDN serving notes"
+    }
+  ],
+  "gaps": [
+    "No live measurement on operator Omarchy dual-3090 in this research session",
+    "Exact fp8 KV bytes/token for hybrid GDN on SGLang sm_86 should be taken from server startup logs on-box",
+    "Full DEV.to page body not retrieved (Firecrawl 403); launch line from search index snippet",
+    "AutoRound dual-3090 262144 claim not independently re-benchmarked",
+    "Operator host RAM 32GB vs container-visible memory discrepancy unresolved"
+  ],
+  "confidence": {
+    "level": "medium-high",
+    "rationale": "Strong multi-source prior art with concrete flags and benches for stack choice; 256k multi-request headroom on this exact chassis remains soak-test dependent (P3)."
+  },
+  "recommended_next_actions": [
+    "Boot 0xSero TP2 container on ai-box :8088; capture nvidia-smi and /v1/models",
+    "Promote fp8 KV long-context launch; record SGLang token capacity from logs",
+    "Attach one Hermes profile; tool-call smoke with enable_thinking false",
+    "Optional llama.cpp 262k MTP sidecar for max-window jobs",
+    "systemd + healthcheck + PL 275 persistence",
+    "Create/link GIU Huly issue and durable doc for this report"
+  ],
+  "artifacts": {
+    "know_md": "/home/ice/know/research/qwen38-27b-dual-3090-hermes-serving-direct.md",
+    "know_json": "/home/ice/know/research/qwen38-27b-dual-3090-hermes-serving-direct.json",
+    "scratch_plan": "/srv/scratch/qwen38-3090-research/PLAN.json"
+  },
+  "answers_A_to_G": {
+    "A": "SGLang TP2 can serve near-256k today with AWQ-INT4 + fp8 KV (community 245760); BF16 KV TP2 validated only to 64k. vLLM TP2 plausible; start 131k climb. sm_86: Marlin INT4 real kernels; FP8 weights dequant path.",
+    "B": "See vram_bom_primary; 256k ≈1 concurrent full window; Hermes 8-32k allows multi; shared token pool model.",
+    "C": "Primary AWQ-INT4 serve; llama.cpp AD-Q4/Q5 fallback; AD-Q6/Q8 if context reduced; EXL3 3.5bpw experimental.",
+    "D": "SGLang/vLLM continuous batch >> llama.cpp -np; timeouts 600-1800s; one OpenAI base URL.",
+    "E": "qwen3_coder + qwen3 parsers; thinking off for tools; watch empty content and parser bugs.",
+    "F": "CUDA12/13 matched wheels; NCCL PCIe; PL275; systemd :8088; 32GB RAM load risk; optional P2P kernel.",
+    "G": "WINNER SGLang TP2; llama.cpp sidecar 262k; vLLM alternate; EXL3 no for multi-tenant."
+  }
+}

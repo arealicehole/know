@@ -1,0 +1,346 @@
+{
+  "objective": "Evaluate September 2026 local open-weight image generation stacks to replace paid Kie cloud API on dual RTX 3090 24GB (sm_86), 32GB RAM, Linux exclusive creative mode, with programmatic txt2img + img2img/edit + ControlNet-class control via ComfyUI; compare Qwen-Image family, Z-Image-Turbo, FLUX.1/FLUX.2 variants, SDXL ControlNet/IP-Adapter, SD 3.5, and Krea-2; deliver day-1/day-7 install, multi-GPU pattern, licenses, pitfalls, checklist.",
+  "summary": "Recommended Apache-first day-1 stack: ComfyUI dual workers (CUDA0:8188, CUDA1:8189) running FLUX.2-klein-4B (Apache, unified gen+edit, ~13GB VRAM; operator already has GGUF) plus Z-Image-Turbo 6B (Apache, 8-step, BF16 ~14-16GB). Day-7 add Qwen-Image-2512 + Qwen-Image-Edit (Apache, FP8/GGUF on 24GB) and SDXL ControlNet+IP-Adapter for structural control. Treat FLUX.1-dev/Fill/Kontext/Canny/Depth and FLUX.2-dev as non-commercial without paid BFL license (Fill already owned = R&D only). Krea-2 local weights exist but community license ≠ Apache. Prefer two workers over single multi-GPU process for throughput. Avoid Blackwell-only NVFP4 kernels on sm_86.",
+  "sections": {
+    "A_model_shortlist": [
+      {
+        "name": "FLUX.2-klein-4B",
+        "hf": ["black-forest-labs/FLUX.2-klein-4B", "unsloth/FLUX.2-klein-4B-GGUF"],
+        "params_b": 3.88,
+        "license": "Apache-2.0",
+        "commercial_ok": true,
+        "vram": {"BF16_GB": "~13", "FP8_GB": "lower", "GGUF_GB": "Q4-Q8 fits well under 24"},
+        "download_gb_approx": 23.7,
+        "comfyui": "native",
+        "capabilities": ["txt2img", "img2img", "multi-reference edit"],
+        "priority": "day-1 primary"
+      },
+      {
+        "name": "Z-Image-Turbo",
+        "hf": ["Tongyi-MAI/Z-Image-Turbo", "Comfy-Org/z_image_turbo"],
+        "params_b": 6.15,
+        "license": "Apache-2.0",
+        "commercial_ok": true,
+        "vram": {"BF16_GB": "14-16", "FP8_GB": "~8", "GGUF_GB": "~6 class"},
+        "download_gb_approx": 32.8,
+        "comfyui": "native",
+        "capabilities": ["txt2img", "bilingual text", "8-step turbo"],
+        "priority": "day-1 speed",
+        "notes": "Z-Image-Edit listed to-be-released on card at research time"
+      },
+      {
+        "name": "Qwen-Image-2512",
+        "hf": ["Qwen/Qwen-Image-2512", "Qwen/Qwen-Image"],
+        "params_b": 20.43,
+        "license": "Apache-2.0",
+        "commercial_ok": true,
+        "vram": {"BF16_GB": "~40.9 (offload)", "FP8_GB": "16-21", "GGUF_GB": "Q4 ~12-13"},
+        "download_gb_approx": 57.7,
+        "comfyui": "native tutorials",
+        "capabilities": ["txt2img", "complex text EN/ZH", "realism update Dec 2025"],
+        "priority": "day-7 quality"
+      },
+      {
+        "name": "Qwen-Image-Edit",
+        "hf": ["Qwen/Qwen-Image-Edit"],
+        "params_b": 20.43,
+        "license": "Apache-2.0",
+        "commercial_ok": true,
+        "vram": {"BF16_GB": "~40.9", "FP8_GB": "~20.5", "GGUF_GB": "Q4_K_M ~13.2"},
+        "download_gb_approx": 57.7,
+        "comfyui": "native (Edit-2511 templates community-standard)",
+        "capabilities": ["instruction edit", "semantic+appearance", "text edit in-image"],
+        "priority": "day-7 edit"
+      },
+      {
+        "name": "FLUX.1-schnell",
+        "hf": ["black-forest-labs/FLUX.1-schnell"],
+        "params_b": 11.89,
+        "license": "Apache-2.0",
+        "commercial_ok": true,
+        "vram": {"BF16_GB": "~24", "FP8_GB": "12-17", "GGUF_GB": "6-8"},
+        "comfyui": "native",
+        "capabilities": ["txt2img fast"],
+        "priority": "optional commercial FLUX.1"
+      },
+      {
+        "name": "FLUX.1-dev + Fill + Kontext + Canny + Depth",
+        "hf": [
+          "black-forest-labs/FLUX.1-dev",
+          "black-forest-labs/FLUX.1-Fill-dev",
+          "black-forest-labs/FLUX.1-Kontext-dev",
+          "black-forest-labs/FLUX.1-Canny-dev",
+          "black-forest-labs/FLUX.1-Depth-dev"
+        ],
+        "params_b": 11.9,
+        "license": "FLUX.1 Non-Commercial (other)",
+        "commercial_ok": false,
+        "vram": {"BF16_GB": "~24", "FP8_GB": "12-17", "GGUF_GB": "6-12"},
+        "comfyui": "native",
+        "capabilities": ["quality t2i", "fill/inpaint", "kontext edit", "canny/depth control"],
+        "priority": "R&D only unless BFL commercial license; operator has Fill weights",
+        "notes": "NC license text explicitly lists Fill, Depth, Canny, Kontext"
+      },
+      {
+        "name": "FLUX.2-dev",
+        "hf": ["black-forest-labs/FLUX.2-dev"],
+        "params_b": 32.22,
+        "license": "other (gated; non-Apache)",
+        "commercial_ok": false,
+        "vram": {"note": "wants 24GB+; quant paths exist"},
+        "download_gb_approx": 177.6,
+        "comfyui": "native",
+        "capabilities": ["gen+edit high capacity"],
+        "priority": "low for dual-3090 day-1"
+      },
+      {
+        "name": "SDXL + ControlNet + IP-Adapter",
+        "hf": ["stabilityai/stable-diffusion-xl-base-1.0"],
+        "license": "OpenRAIL++",
+        "commercial_ok": true,
+        "vram": {"base_GB": "6.5-10", "with_CN_GB": "still easy on 24"},
+        "comfyui": "mature",
+        "capabilities": ["txt2img", "img2img", "ControlNet canny/depth/pose", "IP-Adapter"],
+        "priority": "day-7 control plane"
+      },
+      {
+        "name": "SD 3.5 Medium/Large",
+        "hf": [
+          "stabilityai/stable-diffusion-3.5-medium",
+          "stabilityai/stable-diffusion-3.5-large",
+          "stabilityai/stable-diffusion-3.5-controlnets"
+        ],
+        "params_b": {"medium": 2.47, "large": 8.15},
+        "license": "Stability Community License",
+        "commercial_ok": "if annual revenue < $1M else Enterprise",
+        "vram": {"medium_GB": "~10 class", "large_FP16_GB": "~18"},
+        "comfyui": "native + official CNs",
+        "priority": "optional if revenue gate OK"
+      },
+      {
+        "name": "Krea-2 Raw/Turbo",
+        "hf": ["krea/Krea-2-Raw", "krea/Krea-2-Turbo"],
+        "params_b": 12.82,
+        "license": "Krea community (not Apache); commercial contact opensource@krea.ai",
+        "commercial_ok": "conditional",
+        "local_weights_exist": true,
+        "download_gb_approx": 62,
+        "comfyui": "official support",
+        "capabilities": ["aesthetic t2i", "Turbo 8-step up to ~2K", "train LoRA on Raw"],
+        "priority": "day-7 optional after license read"
+      }
+    ],
+    "B_stack": {
+      "runtime": "ComfyUI",
+      "multi_gpu_pattern": "two_workers",
+      "workers": [
+        {"port": 8188, "cuda_visible_devices": "0", "role": "fast gen (Z-Image / klein)"},
+        {"port": 8189, "cuda_visible_devices": "1", "role": "edit / quality (klein edit / Qwen)"}
+      ],
+      "day1_models": ["FLUX.2-klein-4B GGUF", "Z-Image-Turbo BF16/FP8"],
+      "day7_models": ["Qwen-Image-2512 FP8/GGUF + Lightning", "Qwen-Image-Edit", "SDXL ControlNet+IP-Adapter", "optional FLUX.1-schnell", "optional Krea-2 Turbo"],
+      "api": "POST /prompt + WS /ws + GET /history + GET /view; thin FastAPI shim for Kie-like routes",
+      "throughput_estimates_per_gpu_1024": {
+        "z_image_turbo_s": "3-5",
+        "flux2_klein_s": "1-4",
+        "flux1_fp8_s": "15-35",
+        "qwen_fp8_50step_s": "30-90",
+        "sdxl_cn_s": "5-12",
+        "dual_worker_multiplier": "~2x concurrent"
+      },
+      "system_ram_note": "32GB host RAM is bottleneck for two heavy TEs; prefer FP8/GGUF and specialized workers"
+    },
+    "C_control_matrix": {
+      "txt2img_quality": ["Qwen-Image-2512", "Z-Image-Turbo"],
+      "txt2img_speed": ["Z-Image-Turbo", "FLUX.2-klein-4B", "FLUX.1-schnell"],
+      "instruction_edit": ["FLUX.2-klein multi-ref", "Qwen-Image-Edit"],
+      "inpaint": ["Qwen-Edit+mask", "SDXL inpaint", "FLUX.1-Fill NC only if licensed"],
+      "structural_control": ["SDXL ControlNet (Apache/OpenRAIL path)", "FLUX.1 Canny/Depth NC", "SD3.5 CN revenue-gated"],
+      "style_id": ["IP-Adapter SDXL", "FLUX.2-klein multi-ref"],
+      "bilingual_text": ["Qwen-Image*", "Z-Image-Turbo"]
+    },
+    "D_api_integration": {
+      "engine": "ComfyUI HTTP/WS",
+      "endpoints": ["/prompt", "/history/{id}", "/view", "/ws", "/object_info"],
+      "pattern": "Export API-format workflow JSON; parameterize prompts/seeds/images; round-robin dual ports",
+      "kie_replacement": "Map txt2img/img2img/control to frozen workflow templates behind auth gateway"
+    },
+    "E_cost_license": {
+      "apache_only_path": ["FLUX.2-klein-4B", "Z-Image-Turbo", "Qwen-Image*", "FLUX.1-schnell", "SDXL OpenRAIL++"],
+      "bfl_nc_requires_paid_commercial": ["FLUX.1-dev", "Fill", "Kontext", "Canny", "Depth", "FLUX.2-dev"],
+      "stability_1m_gate": ["SD 3.5"],
+      "krea_community": ["Krea-2"],
+      "marginal_cost_per_image": "$0 after hardware",
+      "recommendation": "Ship Apache-only production; quarantine operator FLUX.1-Fill for non-commercial unless BFL license purchased"
+    },
+    "F_pitfalls": [
+      "Avoid Blackwell-only NVFP4 / sm_120 kernels on Ampere sm_86 3090",
+      "32GB RAM + dual heavy TE = swap thrash",
+      "Qwen BF16 does not fit single 24GB resident — use FP8/GGUF",
+      "Downloadable FLUX.1-dev family is not commercial-ok",
+      "FLUX.2-dev ~178GB poor day-1 ROI",
+      "Z-Image-Edit may still be unreleased",
+      "Published VRAM often excludes text encoder",
+      "No NVLink — two workers yes, tensor parallel no",
+      "Pin ComfyUI + native nodes; custom node drift",
+      "HF gated tokens needed for BFL dev / Stability"
+    ],
+    "G_checklist": {
+      "day1": [
+        "Install ComfyUI + driver/torch sm_86-compatible",
+        "Copy FLUX.2-klein GGUF from other host",
+        "Download Z-Image-Turbo Comfy splits",
+        "Two workers 8188/8189",
+        "Python /prompt client smoke test",
+        "Benchmark VRAM and sec/img",
+        "Do not enable Fill on production routes"
+      ],
+      "day7": [
+        "Qwen-2512 FP8/GGUF + Lightning",
+        "Qwen-Image-Edit template",
+        "SDXL ControlNet + IP-Adapter",
+        "Optional schnell / Krea after license",
+        "Kie-compatible gateway",
+        "Regression suite + weight hashes",
+        "BFL commercial decision only if Fill/Kontext mandatory"
+      ]
+    },
+    "huly_document_path_local": "/home/ice/know/research/local-img-gen-dual-3090-kie-replacement-20260917.md",
+    "huly_artifact_host_path": "/srv/app-data/huly-artifacts/geraldov21/20260917-local-img-gen-dual-3090-kie-replacement.md"
+  },
+  "claims": [
+    {
+      "claim_id": "C1",
+      "statement": "Qwen-Image-2512 and Qwen-Image-Edit are released under Apache-2.0.",
+      "evidence_refs": ["E1", "E2", "E9"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C2",
+      "statement": "Z-Image-Turbo is an Apache-2.0 ~6B distilled model with 8-step inference that fits ~14-16GB BF16.",
+      "evidence_refs": ["E4", "E9", "E12"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C3",
+      "statement": "FLUX.2-klein-4B is Apache-2.0, runs ~13GB VRAM, and unifies text-to-image with multi-reference editing.",
+      "evidence_refs": ["E5", "E9", "E21"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C4",
+      "statement": "FLUX.1 [dev], Fill, Depth, Canny, and Kontext are under FLUX.1 Non-Commercial License requiring BFL commercial license for commercial/production use.",
+      "evidence_refs": ["E6", "E18"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C5",
+      "statement": "FLUX.1-schnell is Apache-2.0 and suitable for a commercial-clean FLUX.1 path.",
+      "evidence_refs": ["E9", "E13"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C6",
+      "statement": "Krea-2 open weights (Raw and Turbo) exist on Hugging Face with ComfyUI support, under Krea community license rather than Apache.",
+      "evidence_refs": ["E7", "E9"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C7",
+      "statement": "Stable Diffusion 3.5 uses Stability Community License free for commercial use under $1M annual revenue.",
+      "evidence_refs": ["E17", "E9"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C8",
+      "statement": "SDXL under OpenRAIL++ remains the most mature ControlNet/IP-Adapter control ecosystem for local ComfyUI.",
+      "evidence_refs": ["E8", "E13"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C9",
+      "statement": "For dual 3090 API throughput, two independent ComfyUI workers outperform single-process multi-GPU for concurrent jobs.",
+      "evidence_refs": ["E19"],
+      "confidence": "medium",
+      "status": "partial"
+    },
+    {
+      "claim_id": "C10",
+      "statement": "Qwen-Image-Edit community VRAM tiers: FP8 ~20.5GB, BF16 ~40.9GB, GGUF Q4_K_M ~13.2GB.",
+      "evidence_refs": ["E11"],
+      "confidence": "medium",
+      "status": "partial"
+    },
+    {
+      "claim_id": "C11",
+      "statement": "FLUX.2-dev reports ~32.2B parameters and ~178GB total weight tree on HF — poor day-1 fit vs klein-4B.",
+      "evidence_refs": ["E9", "E10"],
+      "confidence": "high",
+      "status": "supported"
+    },
+    {
+      "claim_id": "C12",
+      "statement": "Blackwell-oriented NVFP4 packs should be avoided on RTX 3090 sm_86; use Ampere-compatible torch/attention builds.",
+      "evidence_refs": ["E14"],
+      "confidence": "medium",
+      "status": "partial"
+    }
+  ],
+  "evidence_index": [
+    {"evidence_id": "E1", "source_label": "Qwen-Image-2512 HF README", "source_url": "https://huggingface.co/Qwen/Qwen-Image-2512", "provenance": "curl raw README", "excerpt": "license: apache-2.0; December update of Qwen-Image t2i foundation"},
+    {"evidence_id": "E2", "source_label": "Qwen-Image-Edit HF README", "source_url": "https://huggingface.co/Qwen/Qwen-Image-Edit", "provenance": "curl raw README", "excerpt": "Apache 2.0; semantic and appearance editing via Qwen2.5-VL + VAE"},
+    {"evidence_id": "E3", "source_label": "Qwen-Image base README", "source_url": "https://huggingface.co/Qwen/Qwen-Image", "provenance": "curl raw README", "excerpt": "20B MMDiT; Apache 2.0; complex text rendering"},
+    {"evidence_id": "E4", "source_label": "Z-Image-Turbo HF README", "source_url": "https://huggingface.co/Tongyi-MAI/Z-Image-Turbo", "provenance": "curl raw README", "excerpt": "license apache-2.0; 6B; 8 NFEs; fits 16G VRAM consumer devices"},
+    {"evidence_id": "E5", "source_label": "FLUX.2-klein-4B HF README", "source_url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4B", "provenance": "curl raw README", "excerpt": "Apache 2.0; ~13GB VRAM; t2i + multi-reference editing; RTX 3090/4070"},
+    {"evidence_id": "E6", "source_label": "FLUX.1 Non-Commercial License", "source_url": "https://raw.githubusercontent.com/black-forest-labs/flux/main/model_licenses/LICENSE-FLUX1-dev", "provenance": "curl", "excerpt": "Includes FLUX.1 [dev], Fill, Depth, Canny, Kontext; Non-Commercial Purpose only unless commercial license"},
+    {"evidence_id": "E7", "source_label": "Krea-2 GitHub README", "source_url": "https://github.com/krea-ai/krea-2", "provenance": "curl raw README", "excerpt": "Raw+Turbo open weights; community license; commercial contact opensource@krea.ai; ComfyUI supported"},
+    {"evidence_id": "E8", "source_label": "SDXL base card", "source_url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0", "provenance": "curl raw README", "excerpt": "license openrail++; CreativeML Open RAIL++-M"},
+    {"evidence_id": "E9", "source_label": "HuggingFace model API metadata", "source_url": "https://huggingface.co/api/models/", "provenance": "curl JSON multi-model", "excerpt": "licenses, gated flags, safetensors param totals for Qwen/Z-Image/FLUX/Krea/SD3.5"},
+    {"evidence_id": "E10", "source_label": "HuggingFace recursive tree sizes", "source_url": "https://huggingface.co/api/models/*/tree/main", "provenance": "curl JSON", "excerpt": "Qwen ~57.7GB; Z-Image ~32.8GB; klein ~23.7GB; FLUX.2-dev ~177.6GB; Krea-Turbo ~62GB"},
+    {"evidence_id": "E11", "source_label": "Qwen-Image-Edit local VRAM guide", "source_url": "https://localaimaster.com/blog/qwen-image-edit-local-guide", "provenance": "curl HTML extract", "excerpt": "FP8 20.5GB; BF16 40.9GB; Q4_K_M 13.2GB; Apache 2.0; Lightning LoRA 4-step"},
+    {"evidence_id": "E12", "source_label": "Z-Image Turbo ComfyUI guide", "source_url": "https://localaimaster.com/blog/z-image-turbo-comfyui", "provenance": "curl HTML extract", "excerpt": "2-3s on 4090 8 steps; BF16 14-16GB; FP8 ~8GB; Apache 2.0"},
+    {"evidence_id": "E13", "source_label": "Local image gen 2026 license map", "source_url": "https://www.digitalapplied.com/blog/local-image-generation-flux-stable-diffusion-comfyui-2026", "provenance": "curl HTML extract", "excerpt": "schnell+SDXL clean client work; FLUX.1-dev NC needs BFL paid license"},
+    {"evidence_id": "E14", "source_label": "FLUX local RTX 3090 guide", "source_url": "https://insiderllm.com/guides/flux-locally-complete-guide/", "provenance": "curl HTML extract", "excerpt": "24GB runs full quality; Blackwell NVFP4 note; klein GGUF paths"},
+    {"evidence_id": "E15", "source_label": "ComfyUI Qwen-Image-2512 tutorial", "source_url": "https://docs.comfy.org/tutorials/image/qwen/qwen-image-2512", "provenance": "curl HTML", "excerpt": "Native ComfyUI workflow for Qwen-Image-2512"},
+    {"evidence_id": "E16", "source_label": "ComfyUI Z-Image-Turbo tutorial", "source_url": "https://docs.comfy.org/tutorials/image/z-image/z-image-turbo", "provenance": "curl HTML", "excerpt": "Native ComfyUI workflow for Z-Image-Turbo"},
+    {"evidence_id": "E17", "source_label": "Stability AI License", "source_url": "https://stability.ai/license", "provenance": "web_search description", "excerpt": "Community License commercial free under $1M annual revenue"},
+    {"evidence_id": "E18", "source_label": "BFL Kontext dev announcement", "source_url": "https://bfl.ai/announcements/flux-1-kontext-dev", "provenance": "web_search", "excerpt": "Kontext [dev] under FLUX.1 Non-Commercial License"},
+    {"evidence_id": "E19", "source_label": "ComfyUI multi-GPU community/docs", "source_url": "https://github.com/Comfy-Org/ComfyUI/discussions/836", "provenance": "web_search", "excerpt": "CUDA_VISIBLE_DEVICES / two instances common dual-GPU pattern"},
+    {"evidence_id": "E20", "source_label": "ComfyUI server routes", "source_url": "https://docs.comfy.org/development/comfyui-server/comms_routes", "provenance": "web_search", "excerpt": "/prompt queue and /ws realtime API"},
+    {"evidence_id": "E21", "source_label": "unsloth FLUX.2-klein GGUF", "source_url": "https://huggingface.co/unsloth/FLUX.2-klein-4B-GGUF", "provenance": "HF API", "excerpt": "Apache-2.0 GGUF quants BF16 through Q2_K"},
+    {"evidence_id": "E22", "source_label": "VentureBeat FLUX.2 klein Apache", "source_url": "https://venturebeat.com/technology/black-forest-labs-launches-open-source-flux-2-klein-to-generate-ai-images-in", "provenance": "web_search", "excerpt": "4B Apache 2.0 commercial without paying BFL"}
+  ],
+  "gaps": [
+    "No on-box dual-3090 benchmarks in this research container",
+    "FLUX.2-dev full license text gated (401 on raw README)",
+    "Krea full community license legal text not mirrored — read krea-2-licensing before commercial use",
+    "Z-Image-Edit release status may change after snapshot",
+    "Exact Qwen-Image-Edit-2511 HF repo naming should be confirmed at install",
+    "Firecrawl 403 forced curl/HF API; some secondary blog claims less multi-sourced"
+  ],
+  "confidence": {
+    "level": "medium-high",
+    "rationale": "Primary HF model cards, license files, and HF API param/size trees verified directly. VRAM and throughput figures rely on community benches cross-checked against official 'fits 16G/13G' statements but were not remeasured on the target 3090s."
+  },
+  "recommended_next_actions": [
+    "Execute Day-1 checklist on dual-3090 host; log nvidia-smi and sec/img",
+    "Adopt Apache-only production policy; keep FLUX.1-Fill off production until BFL commercial decision",
+    "Build Comfy /prompt gateway mapping Kie-like txt2img/img2img/control routes",
+    "Day-7: Qwen FP8/GGUF + SDXL ControlNet pack; freeze weight hashes",
+    "Optional counsel review of OpenRAIL++ and Krea community terms for client deliverables"
+  ],
+  "artifacts": {
+    "know_report": "/home/ice/know/research/local-img-gen-dual-3090-kie-replacement-20260917.md",
+    "json_report": "/home/ice/know/research/local-img-gen-dual-3090-kie-replacement-20260917.json",
+    "huly_doc_requested": true,
+    "huly_issue_requested": true
+  }
+}

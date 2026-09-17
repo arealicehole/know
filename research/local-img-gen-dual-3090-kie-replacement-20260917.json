@@ -340,7 +340,14 @@
   "artifacts": {
     "know_report": "/home/ice/know/research/local-img-gen-dual-3090-kie-replacement-20260917.md",
     "json_report": "/home/ice/know/research/local-img-gen-dual-3090-kie-replacement-20260917.json",
-    "huly_doc_requested": true,
-    "huly_issue_requested": true
+    "huly_doc_id": "6aab39a2d26ebd1298dcc117",
+    "huly_doc_title": "GIU Research: Local Image Gen Dual-3090 Kie Replacement (2026-09-17)",
+    "huly_doc_url": "https://huly.poop.quest/workbench/home-server/document/giu-research-local-image-gen-dual-3090-kie-replacement-2026-09-17-6aab39a2d26ebd1298dcc117",
+    "huly_doc_url_internal": "http://127.0.0.1:8087/workbench/home-server/document/giu-research-local-image-gen-dual-3090-kie-replacement-2026-09-17-6aab39a2d26ebd1298dcc117",
+    "huly_issue": "GIU-46",
+    "huly_issue_url": "https://huly.poop.quest/workbench/home-server/tracker/GIU/issue/GIU-46",
+    "huly_issue_url_internal": "http://127.0.0.1:8087/workbench/home-server/tracker/GIU/issue/GIU-46",
+    "huly_artifact_host": "/srv/app-data/huly-artifacts/geraldov21/20260917-local-img-gen-dual-3090-kie-replacement.md",
+    "related_landscape_doc_id": "6aab370ed26ebd1298dcc11e"
   }
 }

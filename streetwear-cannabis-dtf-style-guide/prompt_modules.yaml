@@ -1,0 +1,746 @@
+# Streetwear × Cannabis DTF — machine-usable prompt modules
+# Task: t_1eefb647
+# Target model: Qwen-Image-2.1 (structured prompts; quote all visible text)
+# Legal: original wording only; no real brand marks
+
+version: "1.0.0"
+task_id: "t_1eefb647"
+updated: "2026-10-03"
+model_target: "Qwen-Image-2.1"
+
+locked_prefix: |
+  Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+  Medium: bold vector-like apparel graphic, cel shading or clean flat print design
+  Background: pure transparent background, no scene, no fabric, no mockup
+  Edges: hard silhouette, clean cut edge, no feathering, no outer glow
+  Composition: centered single graphic, generous empty margin, not all-over print, not seamless pattern
+
+locked_negative: >-
+  all-over print, AOP, seamless pattern, full bleed, edge-to-edge, repeating tile,
+  garment mockup, model wearing shirt, photograph of t-shirt, fabric texture background,
+  soft smoke fading to transparent, feathered edges, outer glow, white square background,
+  grey checkerboard, blurry, lowres, watermark, real brand logos, Supreme box logo,
+  Stussy, Bape, Carhartt, Thrasher, Nike, Adidas, copyrighted cartoon characters,
+  extra limbs, messy microtext, illegible letters
+
+assembly_order:
+  - locked_prefix
+  - family_module
+  - strain_module
+  - text_block
+  - levers
+  - dtf_reminder
+  - locked_negative
+
+dtf_reminder: >-
+  DTF transfer ready, sticker-like isolated shape, opaque colors, hard cut path,
+  print-safe bold lines, transparent background only
+
+variation_levers:
+  pack_role: [hero, minimal, parody, crest, mascot]
+  density: [sparse, medium, packed]
+  palette_mode: [mono, duo, triad, candy, roots, psych, work_drab, marker_night, gas_og, gelato_cream, lcg_jewel]
+  type_mode: [none, single_word, stacked, arched, handstyle]
+  edge_mode: [sharp_rect, badge, circle, jagged_diy, character_contour]
+  finish: [flat, cel, halftone_shade, chrome_cel, distressed_inside_mask]
+  scale_intent: [left_chest, standard_front, oversized_front]
+  parody_energy: [none, sports_broadcast, warning_label_gag, luxury_flex, tourist_poster]
+
+palettes:
+  hype_mono: ["#000000", "#FFFFFF", "#E10600"]
+  gas_og: ["#0B1A0F", "#3D5C3A", "#C7B299", "#D4A017"]
+  candy_runtz: ["#7B2D8E", "#FF4DC4", "#A8E600", "#F5F5F5"]
+  gelato_cream: ["#5B2C6F", "#F7C6C7", "#F4E1C1", "#2E2E2E"]
+  marker_night: ["#1A1020", "#5E2A84", "#FF6A00", "#E8E8E8"]
+  lcg_jewel: ["#2F0A3A", "#1F4D2A", "#FF7A1A", "#F2F2F2"]
+  roots_triad: ["#C8102E", "#FCD116", "#007A3D", "#111111"]
+  work_drab: ["#5C4033", "#6B7B3C", "#C4A574", "#1C1C1C"]
+  psych_70s: ["#568203", "#E1AD01", "#CC5500", "#6F2DA8", "#F5E6C8"]
+  chrome_neon: ["#C0C0C0", "#5A5A5A", "#FFFFFF", "#0A0A0A", "#FF4DC4"]
+
+families:
+  F01_box_logo_hype:
+    id: F01
+    name: box_logo_hype
+    module: >-
+      Style family: hype box-logo plaque energy (original mark only).
+      Form: centered rectangular plaque with thick border and optional lower bar stack.
+      Type: bold condensed sans, all-caps short wordmark.
+      Density: low to medium, high negative space inside the plaque.
+      Palette: high-contrast two or three colors.
+    do: [perfect alignment, thick counters, instant thumbnail read]
+    dont: [copy real box logos, trademark slogans, tiny corporate left-chest only]
+    default_edge: sharp_rect
+    default_palette: hype_mono
+
+  F02_handstyle_script:
+    id: F02
+    name: handstyle_script
+    module: >-
+      Style family: graffiti handstyle script wordmark as the entire graphic.
+      Form: one continuous signature cluster with consistent slant and one flourish only.
+      Type: thick marker script with outline and fill.
+      Density: medium; lettering is the art.
+    do: [stable baseline, readable at small size, solid drip teardrops if any]
+    dont: [illegible wildstyle for retail, celebrity fake tags]
+    default_edge: character_contour
+    default_palette: hype_mono
+
+  F03_varsity_crest:
+    id: F03
+    name: varsity_crest
+    module: >-
+      Style family: varsity letterman crest badge.
+      Form: shield or crest with arched banner, twin supporters, optional year.
+      Type: chunky varsity block plus arched banner sans.
+      Motifs: original twin cannabis leaves or beasts, stars, thick outline.
+    do: [symmetry, thick borders, collegiate color pairs]
+    dont: [real university or league marks]
+    default_edge: badge
+    default_palette: gas_og
+
+  F04_workwear_patch:
+    id: F04
+    name: workwear_patch
+    module: >-
+      Style family: workwear utility patch badge.
+      Form: oval or octagon patch with dashed stitch border.
+      Type: condensed industrial sans, stamped small caps.
+      Palette: muted earth ochre olive brick cream.
+    do: [patch silhouette, worn texture only inside hard mask]
+    dont: [real workwear brand logos]
+    default_edge: badge
+    default_palette: work_drab
+
+  F05_camo_plaque:
+    id: F05
+    name: camo_plaque
+    module: >-
+      Style family: camouflage fill confined inside a plaque (NOT all-over print).
+      Form: rounded rectangle, dog-tag, or shield with thick border; camo stops at border.
+      Type: stencil sans wordmark.
+    do: [camo as fill only, hard outer contour]
+    dont: [full-frame seamless camo, AOP]
+    default_edge: sharp_rect
+    default_palette: gas_og
+
+  F06_skate_flame:
+    id: F06
+    name: skate_flame
+    module: >-
+      Style family: skate board-graphic flame language.
+      Form: twin solid cel-shaded flames, optional wheel or bolt icons, thick black outlines.
+      Palette: black with orange yellow fire or alt teal pink.
+    do: [closed solid flame tips, bold cartoon fire]
+    dont: [wispy alpha smoke, real magazine logos]
+    default_edge: character_contour
+    default_palette: hype_mono
+
+  F07_luxury_monogram:
+    id: F07
+    name: luxury_monogram
+    module: >-
+      Style family: luxury-street monogram plaque.
+      Form: original interlocking initials pattern inside double-line frame; not infinite AOP.
+      Palette: black gold, cream brown, navy silver, or monochrome.
+    do: [framed field, optical balance, generous outer margin]
+    dont: [famous fashion monogram clones]
+    default_edge: sharp_rect
+    default_palette: gelato_cream
+
+  F08_y2k_chrome_candy:
+    id: F08
+    name: y2k_chrome_candy
+    module: >-
+      Style family: Y2K chrome candy street graphic.
+      Form: bubbly chrome wordmark, star bursts as solid shapes, glossy highlight shapes, neon accents.
+      Palette: hot pink lime cobalt chrome silver.
+    do: [clustered center composition, cel chrome not photo bokeh]
+    dont: [full UI screenshot backgrounds]
+    default_edge: sharp_rect
+    default_palette: candy_runtz
+
+  F09_reggae_roots:
+    id: F09
+    name: reggae_roots
+    module: >-
+      Style family: reggae roots badge.
+      Form: circular sun disc badge, red gold green black, original leaf and optional original lion.
+      Type: arched bold display.
+    do: [joyful geometry, respectful color grammar]
+    dont: [real artist likeness, sacred symbol abuse, lazy stereotype clipart]
+    default_edge: circle
+    default_palette: roots_triad
+
+  F10_psych_70s_travel:
+    id: F10
+    name: psych_70s_travel
+    module: >-
+      Style family: 1970s psychedelic travel poster plaque.
+      Form: ornate framed poster rectangle, wavy display type, posterized color bands (no soft airbrush-only).
+      Palette: avocado mustard burnt orange violet cream.
+    do: [posterize gradients to hard bands, single poster edge]
+    dont: [infinite mandala bleed, soft alpha]
+    default_edge: sharp_rect
+    default_palette: psych_70s
+
+  F11_punk_grunge_diy:
+    id: F11
+    name: punk_grunge_diy
+    module: >-
+      Style family: punk DIY xerox zine graphic.
+      Form: jagged opaque paper polygon mask, high contrast B/W plus one accent, stamped mixed type.
+      Texture: grunge only inside hard mask.
+    do: [hard torn-paper silhouette, readable main word]
+    dont: [real band logos, pure illegibility]
+    default_edge: jagged_diy
+    default_palette: hype_mono
+
+  F12_mascot_beast:
+    id: F12
+    name: mascot_beast
+    module: >-
+      Style family: original streetwear mascot character.
+      Form: bold comic ink outlines, cel shading, cannabis-inspired creature, optional arched name under.
+    do: [character contour cut path, original IP only]
+    dont: [existing cartoon or brand mascots, ape-head brand clones]
+    default_edge: character_contour
+    default_palette: gelato_cream
+
+strains:
+  og_kush:
+    display_name: "OG Kush"
+    module: >-
+      Strain lock: OG Kush classic gas energy. Dark forest greens, khaki, gold accent.
+      Motifs: abstract pine sprig, fuel-drop geometry, heavy frost dots as solid speckles.
+      Mood: legacy SoCal gas, serious not candy.
+    palette: gas_og
+    primary_families: [F01, F04, F05]
+  lambs_breath:
+    display_name: "Lamb's Breath"
+    aliases: ["Lamb's Bread", "Lambsbread"]
+    module: >-
+      Strain lock: Lamb's Breath / Lamb's Bread landrace roots energy. Light sage greens, cream, rasta triad accents.
+      Motifs: sun disc, stylized spear cola, airy leaf, original lion optional.
+      Mood: uplift, reggae roots sincerity.
+    palette: roots_triad
+    primary_families: [F09, F10, F02]
+  gelato:
+    display_name: "Gelato"
+    module: >-
+      Strain lock: Gelato dessert hybrid. Cream, soft pink, deep purple, charcoal.
+      Motifs: gelato swirl geometry, dessert leaf, soft purple bud stylized (not photo).
+    palette: gelato_cream
+    primary_families: [F07, F08, F12]
+  runtz:
+    display_name: "Runtz"
+    module: >-
+      Strain lock: Runtz candy-gas. Royal purple, neon pink, lime, sugar white.
+      Motifs: original candy gem shapes, chrome leaf, tropical candy energy without real candy logos.
+    palette: candy_runtz
+    primary_families: [F08, F01, F12]
+  permanent_marker:
+    display_name: "Permanent Marker"
+    module: >-
+      Strain lock: Permanent Marker night candy-gas. Near-black purple, violet, marker-orange accent, frost white.
+      Motifs: abstract marker-cap geometry, deep purple stylized bud, chemical-stripe accent (original).
+    palette: marker_night
+    primary_families: [F01, F07, F11]
+  lcg:
+    display_name: "Lemon Cherry Gelato"
+    aliases: ["LCG"]
+    module: >-
+      Strain lock: Lemon Cherry Gelato jewel bag appeal. Midnight purple, forest green, vivid orange pistil accent, frost white.
+      Motifs: lemon disc + cherry disc pair (original icons), jewel frost dots, candy-cream vibe.
+    palette: lcg_jewel
+    primary_families: [F08, F03, F12]
+  white_runtz:
+    display_name: "White Runtz"
+    module: >-
+      Strain lock: White Runtz creamier candy. Sugar white, soft lilac, pale lime, chrome.
+    palette: candy_runtz
+    primary_families: [F08, F01]
+  pink_runtz:
+    display_name: "Pink Runtz"
+    module: >-
+      Strain lock: Pink Runtz juicier candy. Hot pink, blush, purple, white.
+    palette: candy_runtz
+    primary_families: [F08, F12]
+  jealousy:
+    display_name: "Jealousy"
+    module: >-
+      Strain lock: Jealousy gas-cream frost. Deep green-purple, silver frost, cream highlight.
+    palette: marker_night
+    primary_families: [F07, F05]
+  biscotti:
+    display_name: "Biscotti"
+    module: >-
+      Strain lock: Biscotti cookie-dough gas. Brown sugar, cream, forest, gold.
+    palette: work_drab
+    primary_families: [F04, F07]
+  zkittlez:
+    display_name: "Zkittlez"
+    module: >-
+      Strain lock: Zkittlez rainbow candy fruit (original gems only, no candy brand marks).
+    palette: candy_runtz
+    primary_families: [F08, F10]
+  sour_diesel:
+    display_name: "Sour Diesel"
+    module: >-
+      Strain lock: Sour Diesel east-coast fuel. Acid green, black, white, thin yellow.
+    palette: hype_mono
+    primary_families: [F06, F11]
+  northern_lights:
+    display_name: "Northern Lights"
+    module: >-
+      Strain lock: Northern Lights night legacy. Deep green, violet, gold star bands posterized.
+    palette: psych_70s
+    primary_families: [F10, F09]
+  blue_dream:
+    display_name: "Blue Dream"
+    module: >-
+      Strain lock: Blue Dream legacy hybrid. Teal, sky blue, cream, soft green — keep solid bands.
+    palette: psych_70s
+    primary_families: [F10, F02]
+  gsc:
+    display_name: "Girl Scout Cookies"
+    module: >-
+      Strain lock: GSC dessert cornerstone. Forest, cream, mint, brown sugar.
+    palette: gelato_cream
+    primary_families: [F07, F03]
+  wedding_cake:
+    display_name: "Wedding Cake"
+    module: >-
+      Strain lock: Wedding Cake vanilla icing. White, cream, lilac, gold edge.
+    palette: gelato_cream
+    primary_families: [F07, F01]
+  gmo:
+    display_name: "GMO"
+    module: >-
+      Strain lock: GMO / garlic funk counter-candy. Olive, mustard, black, cream.
+    palette: work_drab
+    primary_families: [F04, F11]
+  mac1:
+    display_name: "MAC 1"
+    module: >-
+      Strain lock: MAC 1 boutique minimal. Alien green, cream, black, quiet luxury.
+    palette: gas_og
+    primary_families: [F01, F07]
+  ice_cream_cake:
+    display_name: "Ice Cream Cake"
+    module: >-
+      Strain lock: Ice Cream Cake pastel dessert. Pastel cream, soft pink, pale purple.
+    palette: gelato_cream
+    primary_families: [F08, F12]
+  trop_cookies:
+    display_name: "Tropicana Cookies"
+    module: >-
+      Strain lock: orange-citrus cookies energy. Vivid orange, green, cream.
+    palette: candy_runtz
+    primary_families: [F06, F08]
+  purple_punch:
+    display_name: "Purple Punch"
+    module: >-
+      Strain lock: Purple Punch grape dessert. Heavy violet, magenta, cream.
+    palette: psych_70s
+    primary_families: [F10, F09]
+  london_pound_cake:
+    display_name: "London Pound Cake"
+    module: >-
+      Strain lock: London Pound Cake dessert luxury. Gold, cream, purple, black.
+    palette: gelato_cream
+    primary_families: [F07, F03]
+
+pack_roles:
+  hero:
+    module: >-
+      Pack role: HERO. Maximum brand signal. One clear focal mass, 1-2 text lines max,
+      strongest silhouette, standard or oversized front detail level.
+  minimal:
+    module: >-
+      Pack role: MINIMAL. Everyday tee. Single word or icon, sparse density, luxury of empty margin,
+      still isolated hard-edge transfer.
+  parody:
+    module: >-
+      Pack role: PARODY ENERGY only. Original slogan and layout jokes; never counterfeit a real mark.
+      Prefer sports-broadcast, fake warning, or tourist-poster energy with invented names.
+  crest:
+    module: >-
+      Pack role: CREST. Collegiate or roots badge structure, arched type, twin supporters, year optional.
+  mascot:
+    module: >-
+      Pack role: MASCOT. Character-first composition, bold outlines, name arched under optional.
+
+# Helper: build_prompt pseudo
+# prompt = locked_prefix + family.module + strain.module + pack_role.module
+#        + 'Text: "' + text + '" in ' + font_style
+#        + levers_as_clauses + dtf_reminder
+# negative = locked_negative
+
+example_prompts:
+  - id: P01
+    strain: og_kush
+    family: F01
+    pack_role: hero
+    text: "OG"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Medium: bold vector-like apparel graphic, cel shading or clean flat print design
+      Background: pure transparent background, no scene, no fabric, no mockup
+      Edges: hard silhouette, clean cut edge, no feathering, no outer glow
+      Composition: centered single graphic, generous empty margin, not all-over print, not seamless pattern
+      Style family: hype box-logo plaque energy (original mark only). Centered rectangular plaque with thick border and lower bar. Bold condensed sans all-caps.
+      Strain lock: OG Kush classic gas. Dark forest greens, khaki, gold accent. Abstract pine and fuel-drop geometry.
+      Pack role: HERO. Strong focal plaque.
+      Text: "OG" in heavy condensed sans, white on deep green plaque with gold trim
+      Finish: flat print, high contrast
+      DTF transfer ready, sticker-like isolated shape, opaque colors, hard cut path, transparent background only
+    negative_ref: locked_negative
+
+  - id: P02
+    strain: og_kush
+    family: F05
+    pack_role: minimal
+    text: "GAS"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Medium: bold vector-like apparel graphic, clean flat print design
+      Background: pure transparent background
+      Edges: hard silhouette, clean cut edge
+      Composition: centered single graphic, generous empty margin, not all-over print
+      Camouflage pattern fill confined inside a rounded rectangular plaque with thick border, stencil wordmark, NOT seamless camo shirt
+      Strain lock: OG Kush gas greens
+      Text: "GAS" in military stencil sans
+      Density: sparse
+      DTF transfer ready, hard cut path, transparent background only
+
+  - id: P03
+    strain: lambs_breath
+    family: F09
+    pack_role: crest
+    text: "LAMB'S BREATH"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Medium: bold apparel graphic, clean flat print
+      Background: pure transparent background
+      Edges: hard circular silhouette
+      Composition: centered badge, not all-over print
+      Reggae roots circular sun disc badge, red gold green black palette, original cannabis leaf, joyful geometry
+      Strain lock: Lamb's Breath landrace roots, light sage accents, uplift mood
+      Text: "LAMB'S BREATH" arched in bold display around sun disc
+      Pack role: CREST badge
+      DTF transfer ready, hard cut path, transparent background only
+
+  - id: P04
+    strain: lambs_breath
+    family: F02
+    pack_role: hero
+    text: "BREATH"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Edges: hard silhouette
+      Original graffiti handstyle script wordmark, consistent right slant, thick marker stroke, one flourish tail, outline and fill
+      Strain lock: Lamb's Breath, sage and cream with gold outline
+      Text: "BREATH" as the handstyle itself
+      No wildstyle illegibility
+      DTF transfer ready, solid letter forms, transparent background only
+
+  - id: P05
+    strain: gelato
+    family: F07
+    pack_role: minimal
+    text: "G"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Luxury streetwear monogram plaque, original interlocking G pattern inside double-line frame, cream and deep purple, gold edge
+      Not seamless all-over monogram
+      Strain lock: Gelato dessert cream purple
+      Text: small clean sans "GELATO" on lower bar optional thin
+      Density: sparse luxury
+      DTF transfer ready, hard border, transparent background only
+
+  - id: P06
+    strain: gelato
+    family: F12
+    pack_role: mascot
+    text: "GELATO"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Original streetwear mascot: friendly gelato-swirl beast with leaf ears, bold comic ink outlines, cel shading, not copyrighted IP
+      Arched wordmark under mascot
+      Text: "GELATO" in bubbly sans
+      Strain lock: cream pink purple dessert colors
+      Character contour hard silhouette
+      DTF transfer ready, transparent background only
+
+  - id: P07
+    strain: runtz
+    family: F08
+    pack_role: hero
+    text: "RUNTZ"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Y2K chrome candy street graphic, bubbly chrome wordmark, neon pink and lime accents, solid star shapes, glossy highlight shapes
+      Strain lock: Runtz candy-gas purple pink lime sugar white
+      Text: "RUNTZ" in chrome bubble letters
+      Centered cluster, not all-over print
+      DTF transfer ready, hard cut edge, transparent background only
+
+  - id: P08
+    strain: runtz
+    family: F01
+    pack_role: parody
+    text: "CANDY GAS"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Hype rectangular plaque stack, original layout only, high contrast purple and lime
+      Parody energy: fake sports-broadcast lower-third bar with invented network letters, not a real network mark
+      Text: "CANDY GAS" bold condensed sans
+      Strain lock: Runtz
+      DTF transfer ready, hard edges, transparent background only
+
+  - id: P09
+    strain: permanent_marker
+    family: F01
+    pack_role: hero
+    text: "PERMANENT"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Box plaque hype stack, near-black purple fill, white type, orange accent bar
+      Strain lock: Permanent Marker night candy-gas, abstract marker-cap icon small
+      Text: "PERMANENT" top bar and "MARKER" bottom bar, bold grotesque
+      Hard rectangle silhouette
+      DTF transfer ready, transparent background only
+
+  - id: P10
+    strain: permanent_marker
+    family: F11
+    pack_role: parody
+    text: "INK"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Punk DIY xerox zine graphic, jagged opaque paper shape, black white and violet, stamped type
+      Strain lock: Permanent Marker chemical-stripe accent original
+      Text: "INK" huge distressed but solid letters
+      Grunge texture inside hard mask only
+      DTF transfer ready, no feathered tears, transparent background only
+
+  - id: P11
+    strain: lcg
+    family: F08
+    pack_role: hero
+    text: "LCG"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Y2K candy chrome graphic with jewel frost dots as solid speckles
+      Strain lock: Lemon Cherry Gelato — midnight purple, forest green, vivid orange, lemon and cherry disc icons original
+      Text: "LCG" chrome bubble with orange outline
+      Centered, not AOP
+      DTF transfer ready, hard edges, transparent background only
+
+  - id: P12
+    strain: lcg
+    family: F03
+    pack_role: crest
+    text: "LEMON CHERRY"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Varsity crest shield, twin leaf supporters, arched banner
+      Strain lock: LCG jewel purple green orange
+      Text: "LEMON CHERRY" arched and "GELATO" in varsity block
+      Hard badge silhouette
+      DTF transfer ready, transparent background only
+
+  - id: P13
+    strain: sour_diesel
+    family: F06
+    pack_role: hero
+    text: "SOUR"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Bold skate twin flame graphic, solid cel-shaded acid green and black flames, thick outlines
+      Strain lock: Sour Diesel fuel energy
+      Text: "SOUR" sliced italic between flames
+      No wispy smoke alpha
+      DTF transfer ready, transparent background only
+
+  - id: P14
+    strain: northern_lights
+    family: F10
+    pack_role: hero
+    text: "NORTHERN LIGHTS"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      1970s psychedelic travel poster plaque, ornate frame, posterized violet green gold bands
+      Strain lock: Northern Lights night legacy
+      Text: "NORTHERN LIGHTS" in wavy display type
+      Hard rectangle poster edge
+      DTF transfer ready, transparent background only
+
+  - id: P15
+    strain: blue_dream
+    family: F02
+    pack_role: minimal
+    text: "DREAM"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Clean handstyle script single word, teal and cream outline
+      Strain lock: Blue Dream
+      Text: "DREAM"
+      Sparse density, hard letter silhouette
+      DTF transfer ready, transparent background only
+
+  - id: P16
+    strain: gsc
+    family: F04
+    pack_role: minimal
+    text: "COOKIES DEPT"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Vintage workwear oval patch, dashed stitch border, industrial type, muted forest and cream
+      Original department wording only
+      Text: "COOKIES DEPT"
+      Hard patch silhouette
+      DTF transfer ready, transparent background only
+
+  - id: P17
+    strain: wedding_cake
+    family: F07
+    pack_role: hero
+    text: "W.C."
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Luxury monogram plaque cream and lilac with gold double frame, original W C interlocking
+      Strain lock: Wedding Cake icing
+      Text: "WEDDING CAKE" micro bar avoided — use "TIER ONE" small support line instead if needed
+      Not seamless AOP
+      DTF transfer ready, transparent background only
+
+  - id: P18
+    strain: gmo
+    family: F04
+    pack_role: hero
+    text: "FUNK"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Workwear octagon patch, olive mustard black, stamped type
+      Strain lock: GMO garlic funk counter-candy
+      Text: "FUNK" and small "LOT 001"
+      Hard patch edge
+      DTF transfer ready, transparent background only
+
+  - id: P19
+    strain: mac1
+    family: F01
+    pack_role: minimal
+    text: "MAC"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Ultra-clean two-color box plaque, alien green on black, thick border
+      Strain lock: MAC 1 boutique minimal
+      Text: "MAC"
+      Sparse, perfect alignment
+      DTF transfer ready, transparent background only
+
+  - id: P20
+    strain: ice_cream_cake
+    family: F12
+    pack_role: mascot
+    text: "SCOOP"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Original mascot scoop-beast with cherry bud nose, bold ink, pastel cel fill
+      Text: "SCOOP" arched under
+      Strain lock: Ice Cream Cake pastels
+      Hard character contour
+      DTF transfer ready, transparent background only
+
+  - id: P21
+    strain: trop_cookies
+    family: F06
+    pack_role: hero
+    text: "TROP"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Skate flame with orange citrus-wheel solid icons, green black orange palette
+      Strain lock: Tropicana Cookies citrus
+      Text: "TROP" bold
+      Solid flames only
+      DTF transfer ready, transparent background only
+
+  - id: P22
+    strain: purple_punch
+    family: F09
+    pack_role: crest
+    text: "PUNCH"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Circular roots-adjacent badge pushed into heavy violet magenta cream, sun replaced with grape-orb original geometry
+      Text: "PUNCH" arched
+      Hard circle cut
+      DTF transfer ready, transparent background only
+
+  - id: P23
+    strain: zkittlez
+    family: F08
+    pack_role: hero
+    text: "Z"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Chrome candy Z monomark with original rainbow gem scatter as solid shapes, no candy brand logos
+      Strain lock: Zkittlez fruit candy
+      Text: "Z" huge chrome
+      Centered cluster not AOP
+      DTF transfer ready, transparent background only
+
+  - id: P24
+    strain: jealousy
+    family: F05
+    pack_role: hero
+    text: "JEALOUSY"
+    full: |
+      Subject: isolated DTF chest transfer graphic for streetwear t-shirt
+      Background: pure transparent background
+      Night camo fill strictly inside shield plaque, silver stencil type, frost white border
+      Strain lock: Jealousy gas-cream frost
+      Text: "JEALOUSY"
+      NOT all-over camo
+      DTF transfer ready, hard shield silhouette, transparent background only
+
+file_naming:
+  pattern: "TD_{strainSlug}_{familyId}_{packRole}_{palette}_{vN}.png"
+  examples:
+    - "TD_permanentMarker_F01_hero_markerNight_v03.png"
+    - "TD_lcg_F08_mascot_lcgJewel_v01.png"
+
+review_checklist:
+  - transparent_background
+  - hard_outer_silhouette
+  - thumbnail_readable
+  - no_real_brand_marks
+  - strain_palette_match
+  - quoted_text_spelling
+  - not_aop_or_seamless
+  - print_safe_line_weights
+  - single_graphic_unit
+  - pack_has_hero_and_minimal

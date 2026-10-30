@@ -86,7 +86,10 @@ probe fleet → research (Geraldo) → measure/test → findings →
    - Headline: PJ wins **offer/machine** surface; chains win **place/authority** (street NAP, franchise URL farm, Yelp/dir density, ratings/tenure). Not robots/UCP.  
    - Live PJ holes: no `streetAddress` (llms.txt admits it), no `aggregateRating`, thin sameAs vs AG/Mouse. $75 ambient (Eyeconic). P2/P7 = specialty SERP.  
    - Status: R4 **diagnosed** — maximize = identity pin + citation graph, not more dual-stack alone.  
-- **Frank 2026-10-30:** **Compete** on P2/P7 specialty. **No street address yet** (do not invent). Web: intent landings card; Marketing: GBP/Yelp pack.  
+- **Frank 2026-10-30:** **Compete** on P2/P7 specialty. **No street address yet** (do not invent).  
+  - Web intent landings: PR #12 `/signs-phoenix` + `/vehicle-graphics-phoenix` (preview; await merge). Card `t_6909b23e`.  
+  - Marketing GBP/Yelp pack: **DONE 2026-10-30** (`t_266e6265` Gwen). Operator pack: `pj-gbp-yelp-compete-pack-20261030.md` — primary `Print shop` + Sign/Banner/Vinyl/Digital/Vehicle wrapping/Screen printing; Yelp print-junkie-tempe; **Frank executes GBP UI** (agents can’t).  
+  - GSC Product/Merchant critical missing `offers.price`: fix PR #13 (await merge).  
 3. **Dual-stack rescore** (R5) — cheap, updates the replication blueprint. (`t_4237e704` ready; seed autopsy)
 
 ### Wave 2 — *causal*

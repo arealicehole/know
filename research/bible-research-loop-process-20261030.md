@@ -81,8 +81,12 @@ probe fleet → research (Geraldo) → measure/test → findings →
    - **DONE 2026-10-30** (`t_d08327bc`): 35/35 cells, ~$1.40. Report: `citation-battery-tier1-p1-p7-expansion-t_d08327bc.md`  
    - Snapshot: Maza P3 **5/5**; PJ P1 **3/5** (Gemini flipped HIT); P2/P7 **0/5**; P5 only Perplexity names $75; Edge 24/24=200; Maza **11/15** vs PJ **4/20**  
    - Prior “PJ 1/4 on P1” obsolete for this snapshot  
-2. **PJ miss autopsy** (R4) using battery miss transcripts + competitor probes. (`t_f1118fbb` ready; seeded with 1A)  
-3. **Dual-stack rescore** (R5) — cheap, updates the replication blueprint. (`t_4237e704` ready)
+2. **PJ miss autopsy** (R4) using battery miss transcripts + competitor probes.  
+   - **DONE 2026-10-30** (`t_f1118fbb`): `pj-chat-discovery-miss-autopsy-20261030.md`  
+   - Headline: PJ wins **offer/machine** surface; chains win **place/authority** (street NAP, franchise URL farm, Yelp/dir density, ratings/tenure). Not robots/UCP.  
+   - Live PJ holes: no `streetAddress` (llms.txt admits it), no `aggregateRating`, thin sameAs vs AG/Mouse. $75 ambient (Eyeconic). P2/P7 = specialty SERP.  
+   - Status: R4 **diagnosed** — maximize = identity pin + citation graph, not more dual-stack alone.  
+3. **Dual-stack rescore** (R5) — cheap, updates the replication blueprint. (`t_4237e704` ready; seed autopsy)
 
 ### Wave 2 — *causal*
 4. **Host decision (2026-10-30):** PJ = public Vercel feature-branch previews; Maza = SSO-walled previews → clone project or log-only. Doc: `ablation-host-decision-20261030.md`.  

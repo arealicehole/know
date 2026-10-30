@@ -90,7 +90,13 @@ probe fleet → research (Geraldo) → measure/test → findings →
   - Web intent landings: PR #12 `/signs-phoenix` + `/vehicle-graphics-phoenix` (preview; await merge). Card `t_6909b23e`.  
   - Marketing GBP/Yelp pack: **DONE 2026-10-30** (`t_266e6265` Gwen). Operator pack: `pj-gbp-yelp-compete-pack-20261030.md` — primary `Print shop` + Sign/Banner/Vinyl/Digital/Vehicle wrapping/Screen printing; Yelp print-junkie-tempe; **Frank executes GBP UI** (agents can’t).  
   - GSC Product/Merchant critical missing `offers.price`: fix PR #13 (await merge).  
-3. **Dual-stack rescore** (R5) — cheap, updates the replication blueprint. (`t_4237e704` ready; seed autopsy)
+3. **Dual-stack rescore** (R5) — **DONE 2026-10-30** (`t_4237e704`): `ai-readable-dual-stack-rescore-20261030.md`  
+   - Maza **10/11** (offer 4/6 · place **6/6**) · PJ **9/11** (offer **6/6** · place 4/6) — both still lead locals  
+   - Doctrine locked: dual-stack = **offer reliability when retrieved**, not citation cause (Wave 2A absorbed)  
+   - PJ place holes: street **owner-deferred**, no aggregateRating; sitemap still ~17  
+   - Maza offer holes: no HTML `$` chips, no Offer JSON-LD (UCP full 63 prices live)  
+   - Locals catching platform llms/UCP (PHX Screen 7, AZ Hot Tees 7) — not PJ-style SKU UCP  
+   - Compete path (intent landings + GBP) remains maximize for **retrieval**; stack remains **insurance when cited**
 
 ### Wave 2 — *causal*
 4. **Host decision (2026-10-30):** PJ = public Vercel feature-branch previews; Maza = SSO-walled previews → clone project or log-only. Doc: `ablation-host-decision-20261030.md`.  

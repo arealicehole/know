@@ -86,6 +86,7 @@ probe fleet → research (Geraldo) → measure/test → findings →
    - Headline: PJ wins **offer/machine** surface; chains win **place/authority** (street NAP, franchise URL farm, Yelp/dir density, ratings/tenure). Not robots/UCP.  
    - Live PJ holes: no `streetAddress` (llms.txt admits it), no `aggregateRating`, thin sameAs vs AG/Mouse. $75 ambient (Eyeconic). P2/P7 = specialty SERP.  
    - Status: R4 **diagnosed** — maximize = identity pin + citation graph, not more dual-stack alone.  
+- **Frank 2026-10-30:** **Compete** on P2/P7 specialty. **No street address yet** (do not invent). Web: intent landings card; Marketing: GBP/Yelp pack.  
 3. **Dual-stack rescore** (R5) — cheap, updates the replication blueprint. (`t_4237e704` ready; seed autopsy)
 
 ### Wave 2 — *causal*

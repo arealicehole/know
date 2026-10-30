@@ -78,13 +78,18 @@ probe fleet → research (Geraldo) → measure/test → findings →
 
 ### Wave 1 — *now* (measurement depth)
 1. **Full Tier-1 battery expansion** (P1–P7 × engines) + empty-cell fill — API labeled.  
-2. **PJ miss autopsy** (R4) using battery miss transcripts + competitor probes.  
-3. **Dual-stack rescore** (R5) — cheap, updates the replication blueprint.
+   - **DONE 2026-10-30** (`t_d08327bc`): 35/35 cells, ~$1.40. Report: `citation-battery-tier1-p1-p7-expansion-t_d08327bc.md`  
+   - Snapshot: Maza P3 **5/5**; PJ P1 **3/5** (Gemini flipped HIT); P2/P7 **0/5**; P5 only Perplexity names $75; Edge 24/24=200; Maza **11/15** vs PJ **4/20**  
+   - Prior “PJ 1/4 on P1” obsolete for this snapshot  
+2. **PJ miss autopsy** (R4) using battery miss transcripts + competitor probes. (`t_f1118fbb` ready; seeded with 1A)  
+3. **Dual-stack rescore** (R5) — cheap, updates the replication blueprint. (`t_4237e704` ready)
 
 ### Wave 2 — *causal*
-4. Confirm **staging/preview** for PJ and/or Maza (Romulus ops check).  
-5. If yes → **ablation V0–V3 first** (identity vs transaction kill tests).  
-6. If no → **retrospective triangulation** (R7) + labeled correlational.
+4. **Host decision (2026-10-30):** PJ = public Vercel feature-branch previews; Maza = SSO-walled previews → clone project or log-only. Doc: `ablation-host-decision-20261030.md`.  
+5. Cut PJ **V0–V3** preview branches (**never merge to main**); bot-UA 200 proof. Card `t_4c2afe0d`.  
+6. Geraldo ablation battery on those URLs only — label **preview/domain-shifted**, not prod causation; open-discovery **and** URL-forced legs. Card `t_6e47f5ab` (blocked until URLs).  
+7. Independent review (`deleg_22c96ed7`): host OK; Wave 2 not “running” until variants live; `maza-mediterranean.vercel.app` is **prod alias**.  
+8. Maza causal waits clone **or** R7 retrospective. Optional separate defect: `www.mazahalalfood.com` TLS hostname mismatch.
 
 ### Wave 3 — *human path + maximize*
 7. Consumer-app pack (R2) — Frank paste or guided screenshot protocol.  

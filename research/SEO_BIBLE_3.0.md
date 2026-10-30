@@ -317,7 +317,7 @@ Dominate the local Map Pack, Google Lens, AI Overviews, and voice assistants whi
 
 ---
 
-## 7. Current Checklist (v3.0-DRAFT — June 2026 + media patch + chat-UI)
+## 7. Current Checklist (v3.0 — June 2026 + media patch + chat-UI)
 
 **Universal**
 - [ ] Every major page contains genuine Information Gain (or media-specific gain per §8.3)

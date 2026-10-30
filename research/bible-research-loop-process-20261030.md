@@ -94,10 +94,17 @@ probe fleet → research (Geraldo) → measure/test → findings →
 
 ### Wave 2 — *causal*
 4. **Host decision (2026-10-30):** PJ = public Vercel feature-branch previews; Maza = SSO-walled previews → clone project or log-only. Doc: `ablation-host-decision-20261030.md`.  
-5. Cut PJ **V0–V3** preview branches (**never merge to main**); bot-UA 200 proof. Card `t_4c2afe0d`.  
-6. Geraldo ablation battery on those URLs only — label **preview/domain-shifted**, not prod causation; open-discovery **and** URL-forced legs. Card `t_6e47f5ab` (blocked until URLs).  
-7. Independent review (`deleg_22c96ed7`): host OK; Wave 2 not “running” until variants live; `maza-mediterranean.vercel.app` is **prod alias**.  
-8. Maza causal waits clone **or** R7 retrospective. Optional separate defect: `www.mazahalalfood.com` TLS hostname mismatch.
+5. Cut PJ **V0–V3** preview branches (**never merge to main**); bot-UA 200 proof. Card `t_4c2afe0d` **DONE**.  
+6. Geraldo ablation battery — **DONE 2026-10-30** (`t_6e47f5ab`): report `pj-ablation-battery-v0-v3-20261030.md`  
+   - 50/50 cells · ~$2.69 · preview-only · **no prod causation**  
+   - Open-discovery: **zero** `*.vercel.app` retrieval (autopsy-compatible)  
+   - URL-forced primary: OpenAI/Gemini **offer_score=3 on all V0–V3** (HTML + name/tel carry $75/phone **without** llms.txt or UCP)  
+   - Pooled impact: **V1 (no llms)=0.00** · **V2 (no UCP)=0.20** · **V3 (addr thin)=0.20** (low-conf; Perplexity-noisy). OpenAI/Gemini/Grok paired Δ = 0  
+   - V3 was **PostalAddress-only** thin, not full schema wipe  
+   - Doctrine (preview-scoped): when URL is known, **on-page price + core NAP** dominate offer reliability; llms/UCP not required for forced extraction — still **untested for prod discovery**  
+7. Independent review (`deleg_22c96ed7`): host OK; `maza-mediterranean.vercel.app` is **prod alias**.  
+8. Maza causal waits clone **or** R7 retrospective. Optional: `www.mazahalalfood.com` TLS defect.  
+9. **Still-open after Wave 2A (Frank decide, do not auto-spin):** true **V3b** full JSON-LD wipe re-run; prod-subdomain ablation for discovery rank; V4 visible-$ / bot-block arms.
 
 ### Wave 3 — *human path + maximize*
 7. Consumer-app pack (R2) — Frank paste or guided screenshot protocol.  

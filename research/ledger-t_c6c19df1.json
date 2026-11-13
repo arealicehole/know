@@ -1,0 +1,201 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": 1,
+      "url": "https://www.coingecko.com/en/methodology",
+      "title": "CoinGecko Methodology (listing criteria, volume aggregation, outlier filters)",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "CoinGecko reserves the rights to publish or unpublish any listed cryptoasset, ICO, or exchange on our site without prior notice if we feel that any of the presented information is inaccurate in any way.",
+          "added": "2026-11-13"
+        },
+        {
+          "text": "A working exchange website with actual trading volume that matches information in API.",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "url": "https://support.coingecko.com/articles/2131953804-why-is-my-exchange-not-listed-on-coingecko",
+      "title": "CoinGecko: Why is my exchange not listed (inorganic volume, mal-intent)",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "We have detected suspicious or inorganic trading volumes, which conflict with our data integrity standards.",
+          "added": "2026-11-13"
+        },
+        {
+          "text": "The exchange may exhibit suspicious links, anomalous volumes, or insufficient disclosure of its leadership team.",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "url": "https://support.coingecko.com/articles/6652614191-trust-score-methodology",
+      "title": "CoinGecko Trust Score Methodology (Basilisk)",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "exchanges may artificially inflate their reported trading volume",
+          "added": "2026-11-13"
+        },
+        {
+          "text": "Exchanges whose data deviates significantly will be penalized for displaying abnormal patterns.",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "url": "https://support.coingecko.com/articles/9489827481-how-to-list-a-new-cryptocurrency-on-coingecko",
+      "title": "CoinGecko: How to List a New Cryptocurrency",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "your cryptocurrency must be actively tradable on a cryptocurrency exchange tracked by CoinGecko",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "url": "https://www.coingecko.com/en/listing_terms",
+      "title": "CoinGecko Terms & Conditions for Listing",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "We will determine in our discretion the suitability of your Activity Post for listing on our Site.",
+          "added": "2026-11-13"
+        },
+        {
+          "text": "you undertake to fully indemnify, defend, hold harmless and reimburse our Company for any and all losses and claims resulting from your breach of the aforegoing warranty",
+          "added": "2026-11-13"
+        },
+        {
+          "text": "de-listing or modifying your Activity Post",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "url": "https://www.coingecko.com/en/glossary/wash-trade",
+      "title": "CoinGecko Glossary: Wash Trade",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "Wash trading is a way to artificially inflate the trading volume of any tradable assets on an exchange.",
+          "added": "2026-11-13"
+        },
+        {
+          "text": "This is ussually done either by a \"market maker\" to help a coin appear appealing to trader or by an exchange itself to trick traders into thinking they are trading in an active exchange.",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "url": "https://tokpie.io/blog/token-listing-on-tokpie-exchange",
+      "title": "Tokpie: Token & Coin Listing (free liquidity/volume support, CG/CMC)",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "Enjoy free liquidity and volume support through our partnerships with multiple market makers.",
+          "added": "2026-11-13"
+        },
+        {
+          "text": "Tokpie partners with reliable market makers to provide perpetual free volume support, which provides sufficient liquidity for trading a token.",
+          "added": "2026-11-13"
+        },
+        {
+          "text": "Yes, listing your token on Tokpie guarantees that it will become eligible for tracking on CoinMarketCap and CoinGecko.",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "url": "https://tokpie.io/blog/crypto-exchange-listing-fees-2026",
+      "title": "Tokpie: CEX Listing Fees 2026 (VA/liquidity definitions)",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "Listing fee is 990 USDT + $250 in tokens.",
+          "added": "2026-11-13"
+        },
+        {
+          "text": "forever-free volume assistance service is provided at no cost.",
+          "added": "2026-11-13"
+        },
+        {
+          "text": "Paid support intended to help exchange-side trading activity.",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "url": "https://coinmarketcap.com/exchanges/tokpie",
+      "title": "CMC: Tokpie exchange page (volume, profile score)",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "Tokpie provide a Bounty Stakes Trading solution.",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "url": "https://www.coingecko.com/en/exchanges/tokpie",
+      "title": "CoinGecko: Tokpie exchange page",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "Anomaly - Trading price or volume is an outlier against the average",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "url": "https://bitcointalk.org/index.php?topic=5376009.0",
+      "title": "Bitcointalk: TOKPIE Exchange - scam (2021 dispute)",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "They convince me, that they list on CoinGecko, CoinMarketCap, etherscan and provide liquidity(trading volume) for a lifetime on their exchange.",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "url": "https://support.coingecko.com/articles/5547344066-why-is-my-token-not-listed-on-coingecko",
+      "title": "CoinGecko: Why is my token not listed (rejection criteria)",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "a lack of organic attention for the project will result in the application being rejected.",
+          "added": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "url": "https://support.coingecko.com/articles/4520117410-why-can-t-i-find-this-coin-token-listing-anymore",
+      "title": "CoinGecko: Why can't I find this coin/token listing anymore (untrack)",
+      "accessed": "2026-11-13",
+      "quotes": [
+        {
+          "text": "we periodically review existing listings, and if they fail to meet our requirements, then they will be deactivated or removed.",
+          "added": "2026-11-13"
+        }
+      ]
+    }
+  ]
+}

@@ -2,8 +2,9 @@
 
 **Date:** 2026-10-30  
 **Actor:** Romulus (Frank lock instruction)  
-**Ops ruler:** `/workspace/seo-bible/SEO_BIBLE_3.0.md`  
-**Know mirror:** `research/SEO_BIBLE_3.0.md`
+**Ops ruler:** `/workspace/seo-bible/SEO_BIBLE_3.0.md` (host: `/srv/apps/tricon-projects/seo-bible/SEO_BIBLE_3.0.md`)  
+**Know mirror (current):** `SEO_BIBLE_3.0.md` (know root, promoted 2026-11-13, task t_19f8b663)  
+**Know research stub:** `research/SEO_BIBLE_3.0.md` (pointer stub to root copy since 2026-11-13; no full body kept to avoid drift)
 
 ## What locked
 - Additive chat-UI / answer-engine discovery edition (from 3.0-DRAFT 2026-10-29)

@@ -1,0 +1,58 @@
+{
+  "captured": "2026-11-14T19:10Z",
+  "anomaly_count": 4,
+  "anomalies": [
+    {
+      "base": "SOL",
+      "target": "USDT",
+      "last": 72.84,
+      "volume": 4223.36223842,
+      "bid_ask_spread_percentage": 0.629361,
+      "is_anomaly": true,
+      "converted_volume": {
+        "btc": 4.683995,
+        "eth": 167.838,
+        "usd": 307440
+      }
+    },
+    {
+      "base": "UNI",
+      "target": "ETH",
+      "last": 0.0027345275274,
+      "volume": 39495.27,
+      "bid_ask_spread_percentage": 0.755826,
+      "is_anomaly": true,
+      "converted_volume": {
+        "btc": 3.017005,
+        "eth": 107.841,
+        "usd": 197540
+      }
+    },
+    {
+      "base": "MANA",
+      "target": "ETH",
+      "last": 3.367405663e-05,
+      "volume": 1019347.2596,
+      "bid_ask_spread_percentage": 1.062497,
+      "is_anomaly": true,
+      "converted_volume": {
+        "btc": 0.95888444,
+        "eth": 34.274607,
+        "usd": 62783
+      }
+    },
+    {
+      "base": "POL",
+      "target": "USDT",
+      "last": 0.080738441258,
+      "volume": 150108.01884,
+      "bid_ask_spread_percentage": 1.247875,
+      "is_anomaly": true,
+      "converted_volume": {
+        "btc": 0.1845323,
+        "eth": 6.612188,
+        "usd": 12112.03
+      }
+    }
+  ]
+}

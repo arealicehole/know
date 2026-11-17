@@ -7,6 +7,8 @@
 **Prior locked edition:** 3.0 (`SEO_BIBLE_3.0.md` — locked October 30, 2026)  
 **Status:** **DRAFT — not the audit ruler until Frank locks.** Revised after Geraldo `t_55fb02ad` (validFrom = Recommended, not Required). Ops still use locked `SEO_BIBLE_3.0.md` until promoted to `SEO_BIBLE_3.0.1.md`. Additive only; no section deletions from 3.0.
 
+> **SUPERSEDED 2026-11-16** — locked edition is `SEO_BIBLE_3.0.1.md`.
+
 ### Changelog
 | Date | Ver | Change |
 |------|-----|--------|

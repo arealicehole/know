@@ -3,7 +3,7 @@
 **Task:** t_b1522ba1
 **Date:** 2026-11-21
 **Researcher:** GIU (Geraldo v2.1)
-**Status:** PASS — viable on 1x RTX 4090/3090 (24 GB), with caveats
+**Status:** PASS — viable on 1x RTX 4090/3090 (24 GB) via llama.cpp (existing binary). vLLM path is Blackwell-only for NVFP4; BF16/FP8 need 32+ GB.
 
 ---
 
@@ -58,10 +58,11 @@ Muse Glimmer is a **dense** (non-MoE) causal transformer. Unlike Inkling 2 Mini 
 - Multiple tool calls can be batched in one `<atem:function_calls>` block
 - Tool results reference the call by `tool_call_id`
 
-## 3. Quantization & File Inventory (Official GGUF Repo)
+## 3. Quantization & File Inventory
 
-**Repo:** `meta-models/Muse-Glimmer-30B-GGUF` (official Meta release)
-**llama.cpp requirement:** Build **b10353+** (merged Aug 10 2026, PR #26841). Current latest is **b12602** (Nov 21 2026). Any recent build works.
+### 3a. Official GGUF Repo (meta-models/Muse-Glimmer-30B-GGUF)
+
+**llama.cpp requirement:** Build **b10353+** (merged Aug 10 2026, PR #26841). **Operator-verified: the existing Sep-14 llama.cpp build already has `muse_glimmer` arch (confirmed via `strings libllama.so`). No rebuild needed for Path F.**
 
 | File | Size | Purpose |
 |---|---|---|
@@ -69,18 +70,32 @@ Muse Glimmer is a **dense** (non-MoE) causal transformer. Unlike Inkling 2 Mini 
 | `Muse-Glimmer-30B-KQuant-Dynamic-Q4_K_XL.gguf` | 19.65 GB | Higher-quality build for 32 GB VRAM |
 | `mmproj-Muse-Glimmer-30B-Q4_K_M.gguf` | 1.40 GB | Perception encoder (ViT) — required for image input |
 | `dflash-Muse-Glimmer-30B-Q4_K_M.gguf` | 1.63 GB | DFlash speculative drafter — optional, ~3.1x speedup |
-| `README.md` | 0.03 MB | Model card + setup instructions |
-| `USAGE_POLICY.md` | 0.01 MB | Usage policy |
-| `LICENSE` | 0.01 MB | Apache 2.0 |
 
-**Memory footprint (official numbers):**
+### 3b. Unsloth GGUF Repo (unsloth/Muse-Glimmer-30B-GGUF)
+
+**Operator note:** `Muse-Glimmer-30B-UD-Q4_K_XL.gguf` (15.88 GB) already downloaded to `/models/`. The mmproj was NOT found under the expected names in the Unsloth repo. **Correct mmproj filenames (from Unsloth repo tree):**
+
+| File | Size | Purpose |
+|---|---|---|
+| `Muse-Glimmer-30B-UD-Q4_K_XL.gguf` | 15.88 GB | Text model (Unsloth UD quant) — **already downloaded** |
+| `Muse-Glimmer-30B-UD-Q4_K_M.gguf` | 14.44 GB | Text model (lower quant) |
+| `Muse-Glimmer-30B-Q8_0.gguf` | 29.61 GB | Text model (Q8, reference) |
+| `mmproj-Muse-Glimmer-30B-Q8_0.gguf` | 2.05 GB | **Vision encoder (Q8) — use this for Unsloth build** |
+| `mmproj-Muse-Glimmer-30B-BF16.gguf` | 3.85 GB | Vision encoder (BF16, reference) |
+| `mmproj-kquant.gguf` | 1.40 GB | **Vision encoder (KQuant) — matches official KQuant build** |
+| `dflash-kquant.gguf` | 1.63 GB | DFlash speculative drafter (KQuant) |
+
+**Critical: The mmproj file in the Unsloth repo is named `mmproj-Muse-Glimmer-30B-Q8_0.gguf` (2.05 GB) for the Q8 vision encoder, or `mmproj-kquant.gguf` (1.40 GB) for the KQuant variant. The operator's search for "mmproj" under tried names failed — the correct filename includes the quant suffix.**
+
+### 3c. Memory Footprint
 
 | Build | Text only | + Vision | + Vision + Drafter |
 |---|---|---|---|
-| KQuant-17GB (Q4_K_M) | ~17 GB | ~19 GB | ~20 GB |
-| KQuant-Dynamic (Q4_K_XL) | ~20 GB | ~22 GB | ~23 GB |
+| KQuant-17GB (Q4_K_M, official) | ~17 GB | ~19 GB | ~20 GB |
+| UD-Q4_K_XL (15.88 GB, Unsloth) | ~16 GB | ~18 GB | ~19.6 GB |
+| KQuant-Dynamic (Q4_K_XL, official) | ~20 GB | ~22 GB | ~23 GB |
 
-**Quantization quality (Meta-reported, 15-benchmark average):**
+### 3d. Quantization Quality (Meta-reported, 15-benchmark average)
 
 | Build | VRAM target | Degradation vs BF16 |
 |---|---|---|
@@ -146,18 +161,49 @@ The ATEM format is structured but non-standard:
 - The template handles multi-turn tool loops natively
 - **Caveat:** Arguments must be a Python dict in the Jinja sandbox — a JSON string will raise an error. This means the Hermes tool-calling layer must pass structured objects, not serialized strings.
 
-**Hermes compatibility:**
+### vLLM Tool-Call Parser (for vLLM deployment)
+
+vLLM has a **dedicated `muse_glimmer` tool-call parser** (in `vllm/tool_parsers/muse_glimmer_tool_parser.py`). It extends `MuseToolParser` with:
+- `_preserve_string_parameters = False` — converts ATEM parameter values to typed objects
+- `_reasoning_recipients = ("self",)` — channels `to=self` are reasoning
+- `_content_recipients = (None, "user")` — channels `to=user` or unaddressed are content
+- `_non_tool_recipients = ("self", "user")`
+
+The vLLM serve command for tool calling:
+```bash
+vllm serve meta-models/Muse-Glimmer-30B \
+  --generation-config auto \
+  --tensor-parallel-size 1 \
+  --enable-auto-tool-choice \
+  --tool-call-parser muse_glimmer \
+  --reasoning-parser muse_glimmer
+```
+
+**Both `--tool-call-parser muse_glimmer` AND `--reasoning-parser muse_glimmer` are required.** The reasoning parser forces `skip_special_tokens=False` — without it, the channel markers are stripped before parsing and both channels collapse into content.
+
+### Hermes Compatibility (llama.cpp path)
+
 - The chat template is in `chat_template.jinja` and works with llama.cpp `--jinja`
 - Tool call parsing in llama.cpp should handle the ATEM format (it's in the template, so llama.cpp renders it; the server returns `tool_calls` in the OpenAI-compatible API response)
 - Need to verify: whether llama.cpp's OpenAI-compatible endpoint correctly deserializes ATEM tool calls into the standard `tool_calls` array. The template renders the tool call text; the server's JSON response should include structured `tool_calls` if llama.cpp parses them. This is the primary integration risk.
 
-**Speculative decoding (DFlash):**
-- Separate 1.63 GB GGUF file
-- Adds `--md` flag to llama-server
+### Speculative Decoding (DFlash)
+
+**llama.cpp path:**
+- Separate 1.63 GB GGUF file (`dflash-kquant.gguf` in Unsloth repo, `dflash-Muse-Glimmer-30B-Q4_K_M.gguf` in official repo)
+- Adds `-md` flag to llama-server
 - 5-layer block-diffusion drafter, block size 16
 - Predicts 16-token blocks verified in parallel
 - ~3.1x speedup on RTX 5090
 - Optional but recommended for agent workloads (long tool loops benefit most)
+
+**vLLM path:**
+- Draft head: `meta-models/Muse-Glimmer-30B-assistant` (5.11 GB, BF16)
+- `--speculative-config '{"method": "dflash", "model": "meta-models/Muse-Glimmer-30B-assistant", "num_speculative_tokens": 15}'`
+- `num_speculative_tokens: 15` is FIXED (block_size 16, slot 0 re-presents last accepted token)
+- Requires `--max-num-seqs 32` (DFlash uses 16 query positions per active request during warmup)
+- On 2x RTX 5090: decode goes from 68.8 → ~240 tok/s (3.5x)
+- On 1x 5090: OOM during init (draft head 5.11 GB + NVFP4 weights 25.42 GB > 32 GB). **Requires second card for vLLM + DFlash.**
 
 ## 6. Hermes Integration Checklist
 
@@ -208,7 +254,67 @@ The ATEM format is structured but non-standard:
 - Siren AgentDojo attack success: 28.4% (higher than Gemma4's 25.6%)
 - Utility: 94.2% (best of the three)
 
-## 9. Risks & Caveats
+## 10. vLLM Deployment (TP2 2x RTX 3090, sm86 Ampere)
+
+### NVFP4 on Ampere: NOT SUPPORTED
+
+vLLM's NVFP4 kernel backends require **Blackwell (sm_120+) or Hopper (sm_90+)**:
+- `FLASHINFER_TRTLLM`, `FLASHINFER_CUTLASS`, `FLASHINFER_CUTEDSL` — Blackwell/Hopper
+- `VLLM_CUTLASS`, `MARLIN` — Blackwell/Hopper
+- `EMULATION` — Triton-based dequant to BF16, works on any GPU but **slow** (dequantizes every expert weight to BF16 every forward step)
+
+**RTX 3090 (sm_86, Ampere) does NOT have native NVFP4 support.** The `Inferact/Muse-Glimmer-30B-NVFP4-W4A4` checkpoint (25.42 GB) would run via the EMULATION backend (Triton dequant → BF16 → standard GEMM), but:
+- No speed advantage over just using BF16/FP8 weights
+- The vLLM recipe explicitly states: "NVFP4 kernels are Blackwell-only"
+- The `modelopt_fp4` quant method with `quant_algo: NVFP4` would load, but the MoE kernels fall back to emulation
+
+**Verdict: Do NOT use the NVFP4 checkpoint on 2x 3090. Use BF16 or FP8 instead.**
+
+### BF16 on 2x RTX 3090 (TP2)
+
+- Weights: 59.58 GB → ~29.8 GB per GPU (TP2)
+- Vision encoder: ~3.6 GB → ~1.8 GB per GPU
+- KV cache at 131K: ~1.5 GB per GPU
+- Total per GPU: ~33 GB → **DOES NOT FIT in 24 GB**
+
+**BF16 does not fit on 2x 3090 (24 GB each) even with TP2.** The model is too large.
+
+### FP8 Block on 2x RTX 3090 (TP2)
+
+- Weights: 32.78 GB → ~16.4 GB per GPU (TP2)
+- Vision encoder: ~3.6 GB → ~1.8 GB per GPU
+- KV cache at 32K: ~0.5 GB per GPU
+- Total per GPU: ~18.7 GB → **FITS in 24 GB** with ~5 GB headroom
+
+The `RedHatAI/Muse-Glimmer-30B-FP8-block` checkpoint (32.78 GB, FP8 block-scaled weights, dynamic activations, vision tower + embeddings BF16) is the **only viable vLLM path for 2x 3090**.
+
+**Caveat:** FP8 block-scaled weights require `VLLM_USE_DEEP_GEMM=0 VLLM_MOE_USE_DEEP_GEMM=0` on sm120 (RTX 5090). On sm86 (3090), DeepGEMM is not used (it's Blackwell-only), so this workaround is not needed. However, the FP8 kernels themselves need verification on Ampere — vLLM's FP8 support is primarily tested on Hopper/Blackwell.
+
+### vLLM Serve Command (2x 3090, FP8)
+
+```bash
+vllm serve /models/Muse-Glimmer-30B-FP8-block \
+  --served-model-name muse-glimmer \
+  --tensor-parallel-size 2 \
+  --gpu-memory-utilization 0.90 \
+  --max-model-len 32768 \
+  --max-num-seqs 32 \
+  --enable-auto-tool-choice \
+  --tool-call-parser muse_glimmer \
+  --reasoning-parser muse_glimmer \
+  --generation-config auto
+```
+
+### DFlash on vLLM 2x 3090
+
+The DFlash draft head (5.11 GB BF16) adds ~2.6 GB per GPU. With FP8 weights (~16.4 GB) + vision (~1.8 GB) + KV (~0.5 GB) + drafter (~2.6 GB) = ~21.3 GB per GPU → **fits in 24 GB** with ~2.7 GB headroom.
+
+```bash
+--speculative-config '{"method": "dflash", "model": "meta-models/Muse-Glimmer-30B-assistant", "num_speculative_tokens": 15}' \
+--max-num-seqs 32
+```
+
+## 11. Risks & Caveats
 
 1. **Dense = all params active:** Unlike Inkling 2 Mini (3.4B active), every token pays the full 29.6B compute cost. On a 4090, this means ~70-80 tok/s vs potentially 150+ for a MoE with 3-5B active. Still fast enough, but not as fast as it could be.
 2. **ATEM tool call format is non-standard:** The XML-like format may need adaptation in Hermes' tool-call parser. The `--jinja` flag handles rendering, but the server-side parsing of ATEM blocks into structured `tool_calls` needs verification.
@@ -216,22 +322,34 @@ The ATEM format is structured but non-standard:
 4. **Vision is additive:** The 1.4 GB mmproj is mandatory for image input. If you don't need vision, you save 1.4 GB and can use a larger context.
 5. **Knowledge cutoff Jan 4, 2026:** 10 months old. Will lack late-2026 knowledge.
 6. **Meta's safety benchmarks show higher violation rates** than Gemma4 on CI Memories (26.4% vs 12.1%) and Siren (28.4% vs 25.6%). Not disqualifying, but worth noting for agent use with tool access.
+7. **vLLM NVFP4 is Blackwell-only:** On 2x 3090 (Ampere), NVFP4 checkpoints cannot use native kernels. Must use FP8 or BF16. BF16 doesn't fit; FP8 does.
+8. **llama.cpp is the primary path:** The existing Sep-14 build has `muse_glimmer` arch. No rebuild needed. Use the Unsloth UD-Q4_K_XL (15.88 GB) + `mmproj-Muse-Glimmer-30B-Q8_0.gguf` (2.05 GB) + `dflash-kquant.gguf` (1.63 GB).
 
-## 10. Verdict
+## 12. Verdict
 
-**PASS — Recommended for AI Box deployment on 1x 24 GB GPU.**
+**PASS — Primary path: llama.cpp (existing binary, no rebuild). Secondary path: vLLM FP8 on 2x 3090.**
 
-- Fits 24 GB VRAM with 3-4 GB headroom (weights 16.8 + vision 1.4 + KV 1.5-2.5)
+**llama.cpp (recommended):**
+- Existing Sep-14 build has `muse_glimmer` arch (verified)
+- UD-Q4_K_XL (15.88 GB) + mmproj-Q8 (2.05 GB) + dflash (1.63 GB) = ~19.6 GB → fits 24 GB
 - 70-80 tok/s baseline, 200-230 tok/s with DFlash — well above 45 tok/s target
 - Strong agentic benchmarks (MCP Atlas 75.5, DeepSearch 74.6)
-- Apache 2.0, official GGUF, llama.cpp b10353+ (current b12602)
+- Apache 2.0
 - **Primary risk:** ATEM tool call parsing in Hermes — needs integration testing
 
-**Recommended config:**
+**vLLM (secondary, for comparison):**
+- FP8 block (32.78 GB) on TP2 2x 3090 → ~18.7 GB per GPU, fits
+- NVFP4 (25.42 GB) is Blackwell-only — NOT usable on Ampere for native kernels
+- BF16 (59.58 GB) does NOT fit on 2x 3090 even with TP2
+- DFlash requires second card (5.11 GB draft head) — fits on 2x 3090 with FP8
+- vLLM >= 0.28.0 (released Nov 16 2026)
+- `muse_glimmer` tool-call parser and reasoning parser built in
+
+**Recommended config (llama.cpp):**
 ```
-Model:      Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf (16.76 GB)
-Vision:     mmproj-Muse-Glimmer-30B-Q4_K_M.gguf (1.40 GB)
-Drafter:    dflash-Muse-Glimmer-30B-Q4_K_M.gguf (1.63 GB) [optional]
+Model:      Muse-Glimmer-30B-UD-Q4_K_XL.gguf (15.88 GB) [Unsloth, already downloaded]
+Vision:     mmproj-Muse-Glimmer-30B-Q8_0.gguf (2.05 GB) [Unsloth]
+Drafter:    dflash-kquant.gguf (1.63 GB) [Unsloth] [optional]
 Context:    32768
 Sampling:   temp=1.0, top_p=0.95, top_k=64
 Flag:       --jinja
